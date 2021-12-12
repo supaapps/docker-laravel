@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y libmcrypt-dev \
     && pecl install imagick \
     && pecl install xdebug \
     && pecl install redis \
-    && docker-php-ext-enable imagick xdebug redis \
-    && docker-php-ext-install zip pdo_mysql mysqli gd \
+    && docker-php-ext-enable imagick xdebug redis\
+    && docker-php-ext-install zip pdo_mysql mysqli gd sockets \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
