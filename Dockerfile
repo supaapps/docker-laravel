@@ -7,7 +7,7 @@ ENV TZ=UTC
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get update && apt-get install -y libmcrypt-dev \
-    libmagickwand-dev git zip unzip libzip-dev --no-install-recommends \
+    libmagickwand-dev git zip unzip cron libzip-dev --no-install-recommends \
     && pecl install imagick \
     && pecl install xdebug \
     && pecl install redis \
