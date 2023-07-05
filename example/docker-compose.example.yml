@@ -1,0 +1,48 @@
+version: '3.7'
+services:
+
+  db:
+    image: mysql:8.0.33
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_DATABASE: hello
+      MYSQL_USER: root
+      MYSQL_ROOT_PASSWORD: password
+
+  redis:
+    image: redis:7.0.11
+    ports:
+      - 6379:6379
+
+  api:
+    build:
+      context: .
+    ports:
+      - 8080:80
+    volumes:
+      - ./:/var/www
+      - ./vendor:/var/www/vendor:ro,cached
+    entrypoint: '/var/www/startup.sh'
+    depends_on:
+      - db
+      - redis
+
+  cron:
+    build:
+      context: .
+    entrypoint: "cron -f -l"
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - api
+
+  queue:
+    build:
+      context: .
+    entrypoint: "php artisan queue:work --tries=5"
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - api

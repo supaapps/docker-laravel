@@ -1,11 +1,11 @@
 FROM php:8.1-apache
 
-
 ENV DEBIAN_FRONTEND noninteractive
 ENV TZ=UTC
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# INSTALL SERVER DEPENDENCIES -------- #
 RUN apt-get update && apt-get install -y libmcrypt-dev \
     libmagickwand-dev git zip unzip cron libzip-dev --no-install-recommends \
     && pecl install imagick \
@@ -14,15 +14,15 @@ RUN apt-get update && apt-get install -y libmcrypt-dev \
     && docker-php-ext-enable imagick xdebug redis\
     && docker-php-ext-install zip pdo_mysql mysqli gd sockets \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/pear
 
-
-
+# POINT APACHE TO PUBLIC DIRECTORY --- #
 RUN sed -ri -e 's!/var/www/html!/var/www/public!g' /etc/apache2/sites-available/000-default.conf
 RUN sed -ri -e 's!/var/www/!/var/www/public!g' /etc/apache2/conf-available/*.conf
 
 RUN printf ' \n\
- <Directory /var/www/public>\n\
+    <Directory /var/www/public>\n\
         Options FollowSymLinks\n\
         AllowOverride All\n\
         Order allow,deny\n\
@@ -30,6 +30,7 @@ RUN printf ' \n\
     </Directory>\n\
     ' >> /etc/apache2/sites-available/000-default.conf
 
+# CHANGE DEFAULT PHP CONFIG ---------- #
 RUN printf ' \n\
 file_uploads = On\n\
 memory_limit = 128M\n\
@@ -41,5 +42,12 @@ variables_order = EGPCS\n\
 
 RUN a2enmod rewrite
 
+# INSTALL COMPOSER ------------------- #
+RUN curl --silent --show-error https://getcomposer.org/installer | php
+RUN mv composer.phar /usr/local/bin/composer
+RUN chmod a+x /usr/local/bin/composer
+
+# ADD LARAVEL SCHEDULE TO CRON ------- #
+# RUN echo "* * * * * root php /var/www/artisan schedule:run  > /proc/1/fd/1 2>/proc/1/fd/2"  >> /etc/crontab
 
 EXPOSE 80
