@@ -6,22 +6,16 @@ ENV TZ=UTC
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # INSTALL SERVER DEPENDENCIES -------- #
-RUN apt-get update
-RUN apt-get install -y \
-    git cron \
-    libmagickwand-dev \
-    libzip-dev zip unzip \
-    --no-install-recommends
-RUN pecl install imagick
-RUN pecl install redis
-RUN docker-php-ext-enable imagick
-RUN docker-php-ext-enable redis
-RUN docker-php-ext-install zip
-RUN docker-php-ext-install pdo_mysql mysqli
-RUN docker-php-ext-install gd
-RUN apt-get clean
-RUN rm -rf /var/lib/apt/lists
-RUN rm -rf /tmp/pear
+RUN apt-get update && apt-get install -y libmcrypt-dev \
+    libmagickwand-dev git zip unzip cron libzip-dev --no-install-recommends \
+    && pecl install imagick \
+    && pecl install xdebug \
+    && pecl install redis \
+    && docker-php-ext-enable imagick xdebug redis\
+    && docker-php-ext-install zip pdo_mysql mysqli gd sockets \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/pear
 
 # POINT APACHE TO PUBLIC DIRECTORY --- #
 RUN sed -ri -e 's!/var/www/html!/var/www/public!g' /etc/apache2/sites-available/000-default.conf
@@ -54,6 +48,6 @@ RUN mv composer.phar /usr/local/bin/composer
 RUN chmod a+x /usr/local/bin/composer
 
 # ADD LARAVEL SCHEDULE TO CRON ------- #
-RUN echo "* * * * * root php /var/www/artisan schedule:run  > /proc/1/fd/1 2>/proc/1/fd/2"  >> /etc/crontab
+# RUN echo "* * * * * root php /var/www/artisan schedule:run  > /proc/1/fd/1 2>/proc/1/fd/2"  >> /etc/crontab
 
 EXPOSE 80
