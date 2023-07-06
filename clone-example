@@ -15,13 +15,13 @@ DB_DATABASE=$(openssl rand -hex 8)
 DB_PASSWORD=$(openssl rand -hex 12)
 
 # DOWNLOAD DOCKER FILES -------------- #
-dl_from_private_repo docker-compose.example.yml
+dl_from_private_repo docker-compose.yml
 dl_from_private_repo docker/startup.sh
 
 # REPLACE VARIABLES ------------------ #
 echo -e "\n♻️ Updating variables"
-sed -ri "" "s/MYSQL_DATABASE.*/MYSQL_DATABASE: $DB_DATABASE/" docker-compose.example.yml
-sed -ri "" "s/MYSQL_ROOT_PASSWORD.*/MYSQL_ROOT_PASSWORD: $DB_PASSWORD/" docker-compose.example.yml
+sed -ri "" "s/MYSQL_DATABASE.*/MYSQL_DATABASE: $DB_DATABASE/" docker-compose.yml
+sed -ri "" "s/MYSQL_ROOT_PASSWORD.*/MYSQL_ROOT_PASSWORD: $DB_PASSWORD/" docker-compose.yml
 sed -ri "" "s/DB_HOST.*/DB_HOST=db/" .env
 sed -ri "" "s/DB_CONNECTION.*/DB_CONNECTION=mysql/" .env
 sed -ri "" "s/DB_USER.*/DB_USER=root/" .env

@@ -22,7 +22,7 @@ services:
       retries: 10
 
   api:
-    image: ghcr.io/supaapps/docker-laravel:v2.0.0
+    image: ghcr.io/supaapps/docker-laravel
     ports:
       - 8080:80
     volumes:
@@ -36,7 +36,7 @@ services:
         condition: service_healthy
 
   queue:
-    image: ghcr.io/supaapps/docker-laravel:v2.0.0
+    image: ghcr.io/supaapps/docker-laravel
     entrypoint: "php /var/www/artisan queue:work --tries=5"
     volumes:
       - ./:/var/www
@@ -44,7 +44,7 @@ services:
       - api
 
 #   cron:
-#     image: ghcr.io/supaapps/docker-laravel:v2.0.0
+#     image: ghcr.io/supaapps/docker-laravel
 #     entrypoint: "cron -f -l"
 #     volumes:
 #       - ./:/var/www
