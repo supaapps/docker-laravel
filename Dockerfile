@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y libmcrypt-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/pear \
-    && /var/www/html /var/www/public
+    && mv /var/www/html /var/www/public
 
 # POINT APACHE TO PUBLIC DIRECTORY --- #
 RUN sed -ri -e 's!/var/www/html!/var/www/public!g' /etc/apache2/sites-available/000-default.conf
