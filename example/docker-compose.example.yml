@@ -37,6 +37,8 @@ services:
     environment:
       DB_HOST: db
       DB_CONNECTION: mysql
+      DB_USER: root
+      DB_PASSWORD: root
       REDIS_HOST: redis
       CACHE_DRIVER: redis
       QUEUE_CONNECTION: redis
