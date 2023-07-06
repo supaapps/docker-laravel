@@ -15,7 +15,8 @@ RUN apt-get update && apt-get install -y libmcrypt-dev \
     && docker-php-ext-install zip pdo_mysql mysqli gd sockets \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /tmp/pear
+    && rm -rf /tmp/pear \
+    && /var/www/html /var/www/public
 
 # POINT APACHE TO PUBLIC DIRECTORY --- #
 RUN sed -ri -e 's!/var/www/html!/var/www/public!g' /etc/apache2/sites-available/000-default.conf
@@ -46,6 +47,8 @@ RUN a2enmod rewrite
 RUN curl --silent --show-error https://getcomposer.org/installer | php
 RUN mv composer.phar /usr/local/bin/composer
 RUN chmod a+x /usr/local/bin/composer
+
+WORKDIR /var/www
 
 # ADD LARAVEL SCHEDULE TO CRON ------- #
 # RUN echo "* * * * * root php /var/www/artisan schedule:run  > /proc/1/fd/1 2>/proc/1/fd/2"  >> /etc/crontab
