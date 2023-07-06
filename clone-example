@@ -1,0 +1,32 @@
+#!/bin/bash
+
+function dl_from_private_repo() {
+    echo -e "\n🌍 Attempt to get"
+    echo -e "https://raw.githubusercontent.com/supaapps/docker-laravel/main/example/$1\n"
+
+    curl -H "Authorization: token $GITHUB_TOKEN" \
+        -L https://raw.githubusercontent.com/supaapps/docker-laravel/main/example/$1 \
+        --create-dirs -O --output-dir ./$(dirname $1)
+}
+
+# GENERATE RANDOM VARIABLES ---------- #
+GITHUB_TOKEN=$1
+DB_DATABASE=$(openssl rand -hex 8)
+DB_PASSWORD=$(openssl rand -hex 12)
+
+# DOWNLOAD DOCKER FILES -------------- #
+dl_from_private_repo docker-compose.example.yml
+dl_from_private_repo docker/startup.sh
+
+# REPLACE VARIABLES ------------------ #
+echo -e "\n♻️ Updating variables"
+sed -ri "" "s/MYSQL_DATABASE.*/MYSQL_DATABASE: $DB_DATABASE/" docker-compose.example.yml
+sed -ri "" "s/MYSQL_ROOT_PASSWORD.*/MYSQL_ROOT_PASSWORD: $DB_PASSWORD/" docker-compose.example.yml
+sed -ri "" "s/DB_HOST.*/DB_HOST=db/" .env
+sed -ri "" "s/DB_CONNECTION.*/DB_CONNECTION=mysql/" .env
+sed -ri "" "s/DB_USER.*/DB_USER=root/" .env
+sed -ri "" "s/DB_DATABASE.*/DB_DATABASE=$DB_DATABASE/" .env
+sed -ri "" "s/DB_PASSWORD.*/DB_PASSWORD=$DB_PASSWORD/" .env
+sed -ri "" "s/REDIS_HOST.*/REDIS_HOST=redis/" .env
+sed -ri "" "s/CACHE_DRIVER.*/CACHE_DRIVER=redis/" .env
+sed -ri "" "s/QUEUE_CONNECTION.*/QUEUE_CONNECTION=redis/" .env
