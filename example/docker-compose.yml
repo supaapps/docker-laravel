@@ -1,0 +1,52 @@
+version: '3.9'
+services:
+
+  db:
+    image: mysql:8.0.33
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: hello
+      MYSQL_ROOT_PASSWORD: password
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 1s
+      timeout: 2s
+      retries: 10
+
+  redis:
+    image: redis:7.0.11
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 2s
+      retries: 10
+
+  api:
+    image: ghcr.io/supaapps/docker-laravel
+    ports:
+      - 8080:80
+    volumes:
+      - ./:/var/www
+      - ./vendor:/var/www/vendor:ro,cached
+    entrypoint: '/var/www/docker/startup.sh'
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  queue:
+    image: ghcr.io/supaapps/docker-laravel
+    entrypoint: "php /var/www/artisan queue:work --tries=5"
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - api
+
+#   cron:
+#     image: ghcr.io/supaapps/docker-laravel
+#     entrypoint: "cron -f -l"
+#     volumes:
+#       - ./:/var/www
+#     depends_on:
+#       - api
