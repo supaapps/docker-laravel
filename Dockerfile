@@ -1,4 +1,4 @@
-FROM php:8.1-apache
+FROM php:8.2-apache
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV TZ=UTC
@@ -51,6 +51,7 @@ RUN chmod a+x /usr/local/bin/composer
 WORKDIR /var/www
 
 # ADD LARAVEL SCHEDULE TO CRON ------- #
+# THIS ONLY WORKS FOR ENTRY POINT RUNNING CRONTAB, no background tasks will 
 # RUN echo "* * * * * root php /var/www/artisan schedule:run  > /proc/1/fd/1 2>/proc/1/fd/2"  >> /etc/crontab
 
 EXPOSE 80
