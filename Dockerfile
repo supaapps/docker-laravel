@@ -39,6 +39,8 @@ upload_max_filesize = 100M\n\
 post_max_size = 100M\n\
 max_execution_time = 600\n\
 variables_order = EGPCS\n\
+display_errors = Off\n\
+display_startup_errors = Off\n\
 ' > /usr/local/etc/php/conf.d/docker-custom.ini
 
 RUN a2enmod rewrite
