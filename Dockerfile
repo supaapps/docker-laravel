@@ -7,12 +7,12 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # INSTALL SERVER DEPENDENCIES -------- #
 RUN apt-get update && apt-get install -y libmcrypt-dev \
-    libmagickwand-dev git zip unzip cron libzip-dev --no-install-recommends \
+    libmagickwand-dev git zip unzip cron libzip-dev libpq-dev --no-install-recommends \
     && pecl install imagick \
     && pecl install xdebug \
     && pecl install redis \
     && docker-php-ext-enable imagick xdebug redis\
-    && docker-php-ext-install zip pdo_mysql mysqli gd sockets \
+    && docker-php-ext-install zip pdo_mysql pdo_pgsql mysqli gd sockets \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/pear \
