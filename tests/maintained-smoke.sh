@@ -51,4 +51,5 @@ response=$(printf 'disposable-upload' | curl --fail --silent --show-error -F 'fi
 python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["method"]=="POST"; assert d["field"]=="smoke"; assert d["upload"]=="disposable-upload"' "$response"
 docker stop --timeout 10 "$container" >/dev/null
 test "$(docker inspect --format '{{.State.ExitCode}}' "$container")" = 0
-docker logs "$container" 2>&1 | grep -q '"GET /rewritten-smoke HTTP/1.1" 200 '
+logs=$(docker logs "$container" 2>&1)
+grep -q '"GET /rewritten-smoke HTTP/1.1" 200 ' <<< "$logs"
