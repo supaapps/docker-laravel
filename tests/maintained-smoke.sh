@@ -26,7 +26,9 @@ else
         for tool in gcc g++ cc make phpize php-config composer git pecl; do
             if command -v "$tool" >/dev/null 2>&1; then echo "Unexpected runtime tool: $tool" >&2; exit 1; fi
         done
-        ! apk info | grep -E "(-dev$|^linux-headers$|^build-base$)"
+        test ! -d /usr/include
+        ! find /usr/lib -name "*.a" | grep -q .
+        ! apk info | grep -E "(^linux-headers$|^build-base$)"
     '
 fi
 docker create --name "$container" -p 127.0.0.1::80 "$image" >/dev/null

@@ -50,3 +50,7 @@ COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 
 # Fresh common stage: no compiler, development headers, Composer or Xdebug layers.
 FROM common AS runtime
+# Some vendor runtime dependencies carry a -dev package dependency (e.g. Brotli).
+# Keep their package records and shared libraries, but omit build-only files.
+RUN rm -rf /usr/include /usr/lib/pkgconfig /usr/share/pkgconfig \
+    && find /usr/lib -name '*.a' -delete

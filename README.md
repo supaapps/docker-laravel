@@ -25,6 +25,10 @@ headers, Composer, Git, PECL or Xdebug. Its shell and package manager remain for
 operability; it is not described as distroless. Apache retains port 80, mod_php,
 `/var/www/public`, and `.htaccess` support. The master runs as root and workers
 use `www-data`, matching the previous process model; this is not a rootless image.
+Some vendor runtime dependencies reference packages named `-dev`; their required
+shared libraries and package records remain, while header, pkg-config and static
+archive files are removed from the runtime. Package records are never hidden from
+the security scanner.
 
 ### Migration Boundary
 

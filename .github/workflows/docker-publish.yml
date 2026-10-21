@@ -76,6 +76,13 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
       - run: bash tests/maintained-smoke.sh local/base-image:test '${{ matrix.version }}' '${{ matrix.profile }}'
+      - name: Fresh Laravel integration
+        env:
+          BRANCH: ${{ matrix.branch }}
+        run: |
+          laravel='^13.0'
+          if [ "$BRANCH" = '8.2' ]; then laravel='^12.0'; fi
+          bash tests/laravel-smoke.sh local/base-image:test "$laravel"
       - uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
         with: { version: v0.76.1, cache: false }
       - name: Scan exact tested image
