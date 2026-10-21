@@ -13,13 +13,29 @@ class PolicyTests(unittest.TestCase):
         config = json.loads(Path("images.json").read_text())
         floors = {"8.2": (8, 2, 35), "8.3": (8, 3, 36), "8.4": (8, 4, 27)}
         tags = set()
+        self.assertRegex(config["base_image"], r"^cgr.dev/chainguard/wolfi-base@sha256:[0-9a-f]{64}$")
+        profiles = set()
         for variant in config["variants"]:
             version = tuple(map(int, variant["version"].split(".")))
             self.assertGreaterEqual(version, floors[variant["version"].rsplit(".", 1)[0]])
-            self.assertRegex(variant["base"], r"^php:" + re.escape(variant["version"]) + r"-apache-trixie@sha256:[0-9a-f]{64}$")
-            self.assertRegex(variant["tag"], r"^php8\.[234]-[0-9]{8}\.[1-9][0-9]*$")
+            self.assertEqual(variant["branch"], variant["version"].rsplit(".", 1)[0])
+            self.assertIn(variant["profile"], ("build", "runtime"))
+            self.assertEqual(variant["php_package"], variant["version"] + "-r0")
+            self.assertRegex(variant["tag"], r"^php8\.[234]-(build|runtime)-[0-9]{8}\.[1-9][0-9]*$")
             self.assertNotIn(variant["tag"], tags)
             tags.add(variant["tag"])
+            profiles.add((variant["branch"], variant["profile"]))
+        self.assertEqual(profiles, {(branch, profile) for branch in floors for profile in ("build", "runtime")})
+
+    def test_runtime_does_not_inherit_build_tools(self):
+        dockerfile = Path("Dockerfile.maintained").read_text()
+        self.assertIn("FROM common AS build", dockerfile)
+        self.assertIn("FROM common AS runtime", dockerfile)
+        self.assertNotIn("FROM build AS runtime", dockerfile)
+        self.assertIn("libxml2-16=2.15.4-r1", dockerfile)
+        self.assertIn("imagemagick-7=7.1.2.34-r0", dockerfile)
+        self.assertNotIn("--allow-untrusted", dockerfile)
+        self.assertNotIn("--force", dockerfile)
 
     def test_unreviewed_high_is_rejected(self):
         report = {"Results": [{"Vulnerabilities": [{"VulnerabilityID": "CVE-test", "PkgName": "test", "InstalledVersion": "1", "Severity": "HIGH"}]}]}

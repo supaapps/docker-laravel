@@ -1,56 +1,79 @@
 # Laravel docker
 
-## Patched runtime variants
+## Build And Runtime Images
 
-The release catalog in `images.json` pins PHP 8.2.35, 8.3.36, and 8.4.27
-to upstream multi-architecture digests. These releases address
-[CVE-2026-109618 and CVE-2026-109619](https://www.php.net/archive/2026.php#2026-10-21-5).
+The proposed v5 catalog in `images.json` provides separate `build` and `runtime`
+images for PHP 8.2.35, 8.3.36 and 8.4.27 on native amd64/arm64. These releases
+address [the PHP emergency vulnerabilities](https://www.php.net/archive/2026.php).
+Publication requires all runtime, build, and security gates; catalog entries are
+not evidence that a release has already been published.
 
-All new variants use Debian 13 (Trixie), matching the published `v4.0.2` OS
-baseline. Older PHP image lines also require OS-level compatibility testing.
+`Dockerfile.maintained` uses digest-pinned Wolfi with signature-verified vendor
+packages: libxml2 2.15.4 and ImageMagick 7.1.2.34. PHP and extension package versions
+are pinned per branch. No private security patches or mixed-distribution binaries
+are used. Transitive packages are resolved by the vendor's signed repository;
+final SBOMs and image digests record the resolved dependency set.
 
-Extension build dependencies are removed after compilation; runtime libraries,
-image-format modules, and the upstream PHP build toolchain are retained. Native
-checks compare image formats before/after cleanup and compile an additional
-extension in a downstream image. Consumers compiling against additional system
-libraries must install the corresponding development packages explicitly.
-
-OpenEXR support is intentionally excluded. Other optional codecs, including SVG,
-are retained from Debian's vendor-built codec bundle while the bundle and its
-OpenEXR runtime dependency are removed. The source package version and copyright
-are recorded under `/usr/local/share/base-image/extra-coders/`. No custom library
-patches are applied. Native tests require the same format list except EXR, verify
-SVG/PNG/JPEG/GIF processing, and reject installed OpenEXR libraries or codecs.
-
-| Image tag | PHP | Purpose |
+| Profile | Contents | Intended use |
 | --- | --- | --- |
-| `php8.2-20261021.1` | 8.2.35 | Existing PHP 8.2 consumers |
-| `php8.3-20261021.1` | 8.3.36 | Compatibility-tested upgrades from older runtimes |
-| `php8.4-20261021.1`, `v4.0.3` | 8.4.27 | Existing PHP 8.4 consumers |
+| `php8.4-build-20261022.1` (also 8.2/8.3) | Runtime plus Composer, compiler, PHP headers, phpize, PECL, Git and Xdebug | Build dependencies and custom extensions |
+| `php8.4-runtime-20261022.1` (also 8.2/8.3) | PHP CLI, Apache/mod_php, required PHP extensions and image libraries | Web, queue and scheduled Artisan processes |
 
-Images are published only after native amd64/arm64 HTTP, upload, extension, and
-image-security checks. The workflow never updates `main`, `latest`, or historical
-release image tags. Releases retain scan/SBOM workflow artifacts.
+Build and runtime share the same vendor PHP and native libraries. The runtime
+starts from the common stage, not the build stage: no compiler, development
+headers, Composer, Git, PECL or Xdebug. Its shell and package manager remain for
+operability; it is not described as distroless. Apache retains port 80, mod_php,
+`/var/www/public`, and `.htaccess` support. The master runs as root and workers
+use `www-data`, matching the previous process model; this is not a rootless image.
 
-Existing images and deployments do not inherit security updates: consumers must
-select a patched tag/digest, rebuild, test, and restart all workers. PHP 8.3 is not
-a promise of compatibility with every older application. Historical `v1`/`v2`
-directory layouts also require migration testing. PHP 8.2 reaches upstream end of
-security support on 2026-12-31.
+### Migration Boundary
 
-Local verification (Docker required):
+This is a major-version change, not an apt-compatible replacement. Wolfi uses
+`apk`, PHP configuration lives in `/etc/php`, and `docker-php-ext-*` helpers are
+not provided. Use vendor extension packages or standard phpize/configure/make
+in the build image. Apache module/configuration paths and exact image-format
+coverage may differ from Debian; SVG/PNG/JPEG/GIF are mandatory tested formats.
+OpenEXR is intentionally unavailable. Run application-specific format and native
+dependency tests before adoption. No cron daemon is included: run scheduled PHP
+commands through your deployment's scheduler. Existing custom entrypoints must
+be reviewed rather than copied blindly.
+
+Copy application/vendor artifacts from build into runtime, not the compiler,
+Composer or the entire builder filesystem. Use the matching PHP branch for both
+stages; custom extensions must use the same ABI and library versions. Runtime
+images include CLI PHP so queues can override the command with `php artisan ...`.
+
+The original Debian compatibility recipe remains in `Dockerfile` with its own
+`tests/smoke.sh`. It is not part of the new publication catalog and is not claimed
+to pass the current security gate. Existing published tags are never overwritten.
+The workflow does not update `main`, `latest` or historical image aliases.
+
+Local verification of the default PHP 8.4 variant (Docker required):
 
 ```sh
 python3 -m unittest discover -s tests -v
-docker build --pull -t local/base-image:test .
-bash tests/smoke.sh local/base-image:test 8.4.27
+docker build --pull -f Dockerfile.maintained --target runtime -t local/runtime:test .
+bash tests/maintained-smoke.sh local/runtime:test 8.4.27 runtime
+docker build --pull -f Dockerfile.maintained --target build -t local/build:test .
+bash tests/maintained-smoke.sh local/build:test 8.4.27 build
 ```
 
-`security-exceptions.json` is an explicit, package/version-specific, expiring
-review ledger. It cannot exempt either PHP runtime CVE. A runtime patch does not
-resolve application Composer vulnerabilities.
+CI verifies loaded XML libraries, DOM/SimpleXML, PDO, required PHP extensions,
+SVG/raster processing, EXR absence, Apache rewrites, HTTP/multipart, graceful stop,
+and an actual compiled PHP extension in every build variant. Both profiles are
+scanned; image-security gates and SBOM artifacts remain mandatory. No blanket
+exceptions are used. `security-exceptions.json` is package/version-specific and
+expiring and cannot exempt either PHP emergency CVE.
+
+Consumers must rebuild, test and restart all workers; publishing a base image
+does not patch a running application or its Composer dependencies. PHP 8.3 is not
+an automatic compatibility guarantee for older applications. PHP 8.2 reaches
+upstream end of security support on 2026-12-31.
 
 ## Clone docker compose example to Laravel project
+
+The historical generator below targets the legacy image layout; review and
+adapt its output before using a v5 build/runtime image.
 
 Go to Laravel project then run:
 

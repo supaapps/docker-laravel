@@ -1,9 +1,13 @@
 {
-  "release": "v4.0.3",
-  "extensions": ["imagick", "redis", "xdebug", "zip", "pdo_mysql", "pdo_pgsql", "mysqli", "gd", "sockets"],
+  "release": "v5.0.0",
+  "base_image": "cgr.dev/chainguard/wolfi-base@sha256:81211e15a86ea1d5357f284482af45730c51de45eaf10ad9ce205d6bfc2df323",
+  "extensions": ["imagick", "redis", "zip", "pdo_mysql", "pdo_pgsql", "mysqli", "gd", "sockets"],
   "variants": [
-    {"id": "php8.2", "version": "8.2.35", "base": "php:8.2.35-apache-trixie@sha256:9e5766bc6f10979a782e11e883837f9ef35a344dbc1a9d0628a2307e8c21f9da", "tag": "php8.2-20261021.1"},
-    {"id": "php8.3", "version": "8.3.36", "base": "php:8.3.36-apache-trixie@sha256:d89e8b3d2033c3179dcd9999d913670eb12a07410a95e60205c64e7d0fac7aef", "tag": "php8.3-20261021.1"},
-    {"id": "php8.4", "version": "8.4.27", "base": "php:8.4.27-apache-trixie@sha256:e6bad969f0b673ce9121c88dabb53488ab1ca139d8ebfac1d1b1ab63f245f725", "tag": "php8.4-20261021.1", "alias": "v4.0.3"}
+    {"id":"php8.2-build","branch":"8.2","version":"8.2.35","profile":"build","php_package":"8.2.35-r0","imagick_package":"3.8.1-r12","redis_package":"6.3.0-r7","xdebug_package":"3.5.3-r2","tag":"php8.2-build-20261022.1"},
+    {"id":"php8.2-runtime","branch":"8.2","version":"8.2.35","profile":"runtime","php_package":"8.2.35-r0","imagick_package":"3.8.1-r12","redis_package":"6.3.0-r7","xdebug_package":"3.5.3-r2","tag":"php8.2-runtime-20261022.1"},
+    {"id":"php8.3-build","branch":"8.3","version":"8.3.36","profile":"build","php_package":"8.3.36-r0","imagick_package":"3.8.1-r12","redis_package":"6.3.0-r6","xdebug_package":"3.5.3-r1","tag":"php8.3-build-20261022.1"},
+    {"id":"php8.3-runtime","branch":"8.3","version":"8.3.36","profile":"runtime","php_package":"8.3.36-r0","imagick_package":"3.8.1-r12","redis_package":"6.3.0-r6","xdebug_package":"3.5.3-r1","tag":"php8.3-runtime-20261022.1"},
+    {"id":"php8.4-build","branch":"8.4","version":"8.4.27","profile":"build","php_package":"8.4.27-r0","imagick_package":"3.8.1-r5","redis_package":"6.3.0-r6","xdebug_package":"3.5.3-r2","tag":"php8.4-build-20261022.1"},
+    {"id":"php8.4-runtime","branch":"8.4","version":"8.4.27","profile":"runtime","php_package":"8.4.27-r0","imagick_package":"3.8.1-r5","redis_package":"6.3.0-r6","xdebug_package":"3.5.3-r2","tag":"php8.4-runtime-20261022.1"}
   ]
 }

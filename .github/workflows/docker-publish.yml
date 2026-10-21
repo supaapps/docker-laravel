@@ -35,7 +35,7 @@ jobs:
           config = json.load(open('images.json'))
           if os.environ['RELEASE'] == 'true' and os.environ['REF'] != config['release']:
               raise SystemExit('Release tag must match images.json')
-          rows = [dict(v, arch=arch, runner=runner, extensions=','.join(config['extensions'])) for v in config['variants'] for arch, runner in [('amd64', 'ubuntu-24.04'), ('arm64', 'ubuntu-24.04-arm')]]
+          rows = [dict(v, base=config['base_image'], arch=arch, runner=runner) for v in config['variants'] for arch, runner in [('amd64', 'ubuntu-24.04'), ('arm64', 'ubuntu-24.04-arm')]]
           with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
               out.write('value=' + json.dumps({'include': rows}) + '\n')
           PY
@@ -57,17 +57,25 @@ jobs:
       - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
+          file: Dockerfile.maintained
+          target: ${{ matrix.profile }}
           pull: true
           load: true
           platforms: linux/${{ matrix.arch }}
           tags: local/base-image:test
-          build-args: PHP_BASE_IMAGE=${{ matrix.base }}
+          build-args: |
+            BASE_IMAGE=${{ matrix.base }}
+            PHP_BRANCH=${{ matrix.branch }}
+            PHP_PACKAGE_VERSION=${{ matrix.php_package }}
+            IMAGICK_PACKAGE_VERSION=${{ matrix.imagick_package }}
+            REDIS_PACKAGE_VERSION=${{ matrix.redis_package }}
+            XDEBUG_PACKAGE_VERSION=${{ matrix.xdebug_package }}
           cache-from: type=gha,scope=${{ matrix.id }}-${{ matrix.arch }}
           cache-to: type=gha,mode=min,scope=${{ matrix.id }}-${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
-      - run: bash tests/smoke.sh local/base-image:test '${{ matrix.version }}' '${{ matrix.extensions }}'
+      - run: bash tests/maintained-smoke.sh local/base-image:test '${{ matrix.version }}' '${{ matrix.profile }}'
       - uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
         with: { version: v0.76.1, cache: false }
       - name: Scan exact tested image
