@@ -6,6 +6,9 @@ The release catalog in `images.json` pins PHP 8.2.35, 8.3.36, and 8.4.27
 to upstream multi-architecture digests. These releases address
 [CVE-2026-109618 and CVE-2026-109619](https://www.php.net/archive/2026.php#2026-10-21-5).
 
+All new variants use Debian 13 (Trixie), matching the published `v4.0.2` OS
+baseline. Older PHP image lines also require OS-level compatibility testing.
+
 | Image tag | PHP | Purpose |
 | --- | --- | --- |
 | `php8.2-20261021.1` | 8.2.35 | Existing PHP 8.2 consumers |

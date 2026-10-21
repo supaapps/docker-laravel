@@ -16,7 +16,7 @@ class PolicyTests(unittest.TestCase):
         for variant in config["variants"]:
             version = tuple(map(int, variant["version"].split(".")))
             self.assertGreaterEqual(version, floors[variant["version"].rsplit(".", 1)[0]])
-            self.assertRegex(variant["base"], r"^php:" + re.escape(variant["version"]) + r"-apache-bookworm@sha256:[0-9a-f]{64}$")
+            self.assertRegex(variant["base"], r"^php:" + re.escape(variant["version"]) + r"-apache-trixie@sha256:[0-9a-f]{64}$")
             self.assertRegex(variant["tag"], r"^php8\.[234]-[0-9]{8}\.[1-9][0-9]*$")
             self.assertNotIn(variant["tag"], tags)
             tags.add(variant["tag"])

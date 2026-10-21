@@ -1,4 +1,4 @@
-ARG PHP_BASE_IMAGE=php:8.4.27-apache-bookworm@sha256:e4fb8001898613d5d0d00eabbae33b9c30b050698b522f15d864bb0bac916945
+ARG PHP_BASE_IMAGE=php:8.4.27-apache-trixie@sha256:e6bad969f0b673ce9121c88dabb53488ab1ca139d8ebfac1d1b1ab63f245f725
 FROM composer:2.10.3@sha256:d0c32820c62cc860fddd22adceed4eeda7698b093a7a88d503414172ce400626 AS composer
 FROM ${PHP_BASE_IMAGE}
 

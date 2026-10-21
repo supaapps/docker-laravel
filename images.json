@@ -2,8 +2,8 @@
   "release": "v4.0.3",
   "extensions": ["imagick", "redis", "xdebug", "zip", "pdo_mysql", "pdo_pgsql", "mysqli", "gd", "sockets"],
   "variants": [
-    {"id": "php8.2", "version": "8.2.35", "base": "php:8.2.35-apache-bookworm@sha256:92d2d6a7c7d372d3f19192b23366001edf55a054dc0e727a52c587f9d142fc81", "tag": "php8.2-20261021.1"},
-    {"id": "php8.3", "version": "8.3.36", "base": "php:8.3.36-apache-bookworm@sha256:28e0194d65d1c25ae279366137a027e2d8a835f1b37d8b96724a32c401ef99eb", "tag": "php8.3-20261021.1"},
-    {"id": "php8.4", "version": "8.4.27", "base": "php:8.4.27-apache-bookworm@sha256:e4fb8001898613d5d0d00eabbae33b9c30b050698b522f15d864bb0bac916945", "tag": "php8.4-20261021.1", "alias": "v4.0.3"}
+    {"id": "php8.2", "version": "8.2.35", "base": "php:8.2.35-apache-trixie@sha256:9e5766bc6f10979a782e11e883837f9ef35a344dbc1a9d0628a2307e8c21f9da", "tag": "php8.2-20261021.1"},
+    {"id": "php8.3", "version": "8.3.36", "base": "php:8.3.36-apache-trixie@sha256:d89e8b3d2033c3179dcd9999d913670eb12a07410a95e60205c64e7d0fac7aef", "tag": "php8.3-20261021.1"},
+    {"id": "php8.4", "version": "8.4.27", "base": "php:8.4.27-apache-trixie@sha256:e6bad969f0b673ce9121c88dabb53488ab1ca139d8ebfac1d1b1ab63f245f725", "tag": "php8.4-20261021.1", "alias": "v4.0.3"}
   ]
 }
