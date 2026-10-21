@@ -77,7 +77,7 @@ COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 WORKDIR /var/www
 
 # ADD LARAVEL SCHEDULE TO CRON ------- #
-# THIS ONLY WORKS FOR ENTRY POINT RUNNING CRONTAB, no background tasks will 
+# THIS ONLY WORKS FOR ENTRY POINT RUNNING CRONTAB, no background tasks will
 # RUN echo "* * * * * root php /var/www/artisan schedule:run  > /proc/1/fd/1 2>/proc/1/fd/2"  >> /etc/crontab
 
 EXPOSE 80
