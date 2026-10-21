@@ -37,6 +37,16 @@ class PolicyTests(unittest.TestCase):
         self.assertNotIn("--allow-untrusted", dockerfile)
         self.assertNotIn("--force", dockerfile)
 
+    def test_build_defaults_match_catalog(self):
+        config = json.loads(Path("images.json").read_text())
+        variant = next(v for v in config["variants"] if v["id"] == "php8.4-build")
+        dockerfile = Path("Dockerfile").read_text()
+        for argument, key in [("PHP_BRANCH", "branch"), ("PHP_PACKAGE_VERSION", "php_package"),
+                              ("IMAGICK_PACKAGE_VERSION", "imagick_package"),
+                              ("REDIS_PACKAGE_VERSION", "redis_package"),
+                              ("XDEBUG_PACKAGE_VERSION", "xdebug_package")]:
+            self.assertIn("ARG " + argument + "=" + variant[key] + "\n", dockerfile)
+
     def test_unreviewed_high_is_rejected(self):
         report = {"Results": [{"Vulnerabilities": [{"VulnerabilityID": "CVE-test", "PkgName": "test", "InstalledVersion": "1", "Severity": "HIGH"}]}]}
         self.assertEqual(len(failures(report, [], datetime.date.today())), 1)

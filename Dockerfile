@@ -29,7 +29,7 @@ RUN set -eux; \
       adduser -S -D -H -u 33 -G www-data www-data; \
     fi; \
     mkdir -p /var/www/public /run/apache2 /usr/local/share/base-image; \
-    printf 'file_uploads=On\nmemory_limit=128M\nupload_max_filesize=100M\npost_max_size=100M\nmax_execution_time=600\nvariables_order=EGPCS\ndisplay_errors=Off\ndisplay_startup_errors=Off\nsession.upload_progress.enabled=Off\n' > /etc/php/conf.d/99-base-image.ini; \
+    printf 'file_uploads=On\nmemory_limit=128M\nupload_max_filesize=100M\npost_max_size=100M\nmax_execution_time=600\nvariables_order=EGPCS\ndisplay_errors=Off\ndisplay_startup_errors=Off\nexpose_php=Off\nsession.upload_progress.enabled=Off\n' > /etc/php/conf.d/99-base-image.ini; \
     php -r 'file_put_contents("/usr/local/share/base-image/imagick-formats.json", json_encode(Imagick::queryFormats(), JSON_THROW_ON_ERROR));'
 COPY config/maintained-httpd.conf /etc/apache2/httpd.conf
 COPY scripts/maintained-httpd-foreground /usr/local/bin/apache2-foreground

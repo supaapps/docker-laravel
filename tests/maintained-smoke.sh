@@ -33,13 +33,22 @@ else
 fi
 docker create --name "$container" -p 127.0.0.1::80 "$image" >/dev/null
 docker cp tests/http.php "$container:/var/www/public/image-smoke.php"
-docker cp tests/rewrite.htaccess "$container:/var/www/public/.htaccess"
+docker cp tests/maintained.htaccess "$container:/var/www/public/.htaccess"
 docker start "$container" >/dev/null
 port=$(docker port "$container" 80/tcp)
 url="http://${port}/rewritten-smoke"
 response=$(curl --fail --silent --show-error --retry 20 --retry-all-errors --retry-delay 1 --connect-timeout 2 --max-time 5 "$url")
 python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["version"]==sys.argv[2]; assert d["method"]=="GET"; assert not d["upload_progress"]' "$response" "$expected"
+python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["environment"]=="checked"; assert d["request_environment"]=="checked"' "$response"
+headers=$(curl --fail --silent --show-error --compressed -D - -o /dev/null "$url")
+grep -qi '^Expires:' <<< "$headers"
+grep -qi '^Content-Encoding: gzip' <<< "$headers"
+! grep -qi '^X-Powered-By:' <<< "$headers"
+! grep -Ei '^Server:.*(PHP|[0-9]+\.[0-9]+)' <<< "$headers"
+test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' -X TRACE "$url")" = 405
+test "$(curl --silent --show-error -o /dev/null -w '%{http_code}' "http://${port}/redirect-smoke")" = 302
 response=$(printf 'disposable-upload' | curl --fail --silent --show-error -F 'field=smoke' -F 'upload=@-;filename=smoke.txt' "http://${port}/image-smoke.php")
 python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["method"]=="POST"; assert d["field"]=="smoke"; assert d["upload"]=="disposable-upload"' "$response"
 docker stop --timeout 10 "$container" >/dev/null
 test "$(docker inspect --format '{{.State.ExitCode}}' "$container")" = 0
+docker logs "$container" 2>&1 | grep -q '"GET /rewritten-smoke HTTP/1.1" 200 '

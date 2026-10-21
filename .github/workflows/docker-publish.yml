@@ -76,6 +76,11 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
       - run: bash tests/maintained-smoke.sh local/base-image:test '${{ matrix.version }}' '${{ matrix.profile }}'
+      - name: Documented build defaults
+        if: matrix.id == 'php8.4-build' && matrix.arch == 'amd64'
+        run: |
+          docker build --pull --target build -t local/default-build:test .
+          bash tests/maintained-smoke.sh local/default-build:test 8.4.27 build
       - name: Fresh Laravel integration
         env:
           BRANCH: ${{ matrix.branch }}

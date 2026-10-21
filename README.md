@@ -52,6 +52,22 @@ The original Debian compatibility recipe remains in `Dockerfile.debian` with its
 to pass the current security gate. Existing published tags are never overwritten.
 The workflow does not update `main`, `latest` or historical image aliases.
 
+### Rebuild And Release Recovery
+
+Wolfi's live signed package index may remove superseded pinned versions. A source
+rebuild is therefore not guaranteed to remain installable indefinitely; retain
+published image digests and SBOMs for deployment reproducibility. When a pin is
+unavailable, update it deliberately and rerun the entire verification matrix.
+Never relax version constraints or security gates to make a rebuild pass.
+
+Each architecture is published only after its own tests and scan pass. Public
+multi-architecture tags are assembled only after every matrix job passes. A
+failed release can leave architecture tags or some completed variant tags behind.
+Do not overwrite or delete those tags to rerun: record their digests, increment
+the catalog's image-tag revision and release version, and publish from a new
+reviewed commit/tag. Partial releases must not be presented as complete releases.
+An already-published image is not rebuilt under the same tag.
+
 Local verification of the default PHP 8.4 variant (Docker required):
 
 ```sh
