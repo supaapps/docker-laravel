@@ -9,8 +9,8 @@ docker run --rm -i "$image" php /dev/stdin "$profile" "$expected" < tests/mainta
 docker run --rm -i "$image" php < tests/features.php
 docker run --rm "$image" httpd -t
 docker run --rm "$image" sh -ec '
-    test "$(apk info -v libxml2-16)" = libxml2-16-2.15.4-r1
-    test "$(apk info -v imagemagick-7)" = imagemagick-7-7.1.2.34-r0
+    apk info -e libxml2-16=2.15.4-r1
+    apk info -e imagemagick-7=7.1.2.34-r0
     ! apk info | grep -Ei "^(openexr|libopenexr)(-|$)"
     ! find /usr/lib -iname "*openexr*.so*" -o -name exr.so | grep -q .
 '
