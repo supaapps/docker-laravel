@@ -38,8 +38,8 @@ docker start "$container" >/dev/null
 port=$(docker port "$container" 80/tcp)
 url="http://${port}/rewritten-smoke"
 response=$(curl --fail --silent --show-error --retry 20 --retry-all-errors --retry-delay 1 --connect-timeout 2 --max-time 5 "$url")
-python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["version"]==sys.argv[2]; assert d["method"]=="GET"; assert not d["upload_progress"]' "$response" "$expected"
-python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["environment"]=="checked"; assert d["request_environment"]=="checked"' "$response"
+python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["version"]==sys.argv[2], d; assert d["method"]=="GET", d; assert not d["upload_progress"], d' "$response" "$expected"
+python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["environment"]=="checked", d; assert d["request_environment"]=="checked", d' "$response"
 headers=$(curl --fail --silent --show-error --compressed -D - -o /dev/null "$url")
 grep -qi '^Expires:' <<< "$headers"
 grep -qi '^Content-Encoding: gzip' <<< "$headers"

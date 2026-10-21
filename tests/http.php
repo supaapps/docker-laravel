@@ -7,5 +7,6 @@ echo json_encode([
     'upload' => isset($_FILES['upload']) ? file_get_contents($_FILES['upload']['tmp_name']) : null,
     'upload_progress' => ini_get('session.upload_progress.enabled'),
     'environment' => getenv('BASE_IMAGE_ENV'),
-    'request_environment' => getenv('BASE_IMAGE_REQUEST'),
+    // Per-directory rewrites preserve SetEnvIf values with a REDIRECT_ prefix.
+    'request_environment' => getenv('BASE_IMAGE_REQUEST') ?: getenv('REDIRECT_BASE_IMAGE_REQUEST'),
 ], JSON_THROW_ON_ERROR);
