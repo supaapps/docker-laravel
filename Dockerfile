@@ -1,4 +1,6 @@
-FROM php:8.4-apache
+ARG PHP_BASE_IMAGE=php:8.4.27-apache-bookworm@sha256:e4fb8001898613d5d0d00eabbae33b9c30b050698b522f15d864bb0bac916945
+FROM composer:2.10.3@sha256:d0c32820c62cc860fddd22adceed4eeda7698b093a7a88d503414172ce400626 AS composer
+FROM ${PHP_BASE_IMAGE}
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV TZ=UTC
@@ -8,9 +10,9 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 # INSTALL SERVER DEPENDENCIES -------- #
 RUN apt-get update && apt-get install -y libmcrypt-dev \
     libmagickwand-dev git zip unzip cron libzip-dev libpq-dev --no-install-recommends \
-    && pecl install imagick \
-    && pecl install xdebug \
-    && pecl install redis \
+    && pecl install imagick-3.8.1 \
+    && pecl install xdebug-3.5.3 \
+    && pecl install redis-6.3.0 \
     && docker-php-ext-enable imagick xdebug redis\
     && docker-php-ext-install zip pdo_mysql pdo_pgsql mysqli gd sockets \
     && apt-get clean \
@@ -41,14 +43,13 @@ max_execution_time = 600\n\
 variables_order = EGPCS\n\
 display_errors = Off\n\
 display_startup_errors = Off\n\
+session.upload_progress.enabled = Off\n\
 ' > /usr/local/etc/php/conf.d/docker-custom.ini
 
 RUN a2enmod rewrite
 
 # INSTALL COMPOSER ------------------- #
-RUN curl --silent --show-error https://getcomposer.org/installer | php
-RUN mv composer.phar /usr/local/bin/composer
-RUN chmod a+x /usr/local/bin/composer
+COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 
 WORKDIR /var/www
 

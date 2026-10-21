@@ -1,0 +1,45 @@
+import datetime
+import json
+import re
+import unittest
+from pathlib import Path
+
+from check_scan import failures
+
+
+class PolicyTests(unittest.TestCase):
+    def test_pinned_supported_variants(self):
+        config = json.loads(Path("images.json").read_text())
+        floors = {"8.2": (8, 2, 35), "8.3": (8, 3, 36), "8.4": (8, 4, 27)}
+        tags = set()
+        for variant in config["variants"]:
+            version = tuple(map(int, variant["version"].split(".")))
+            self.assertGreaterEqual(version, floors[variant["version"].rsplit(".", 1)[0]])
+            self.assertRegex(variant["base"], r"^php:" + re.escape(variant["version"]) + r"-apache-bookworm@sha256:[0-9a-f]{64}$")
+            self.assertRegex(variant["tag"], r"^php8\.[234]-[0-9]{8}\.[1-9][0-9]*$")
+            self.assertNotIn(variant["tag"], tags)
+            tags.add(variant["tag"])
+
+    def test_unreviewed_high_is_rejected(self):
+        report = {"Results": [{"Vulnerabilities": [{"VulnerabilityID": "CVE-test", "PkgName": "test", "InstalledVersion": "1", "Severity": "HIGH"}]}]}
+        self.assertEqual(len(failures(report, [], datetime.date.today())), 1)
+
+    def test_runtime_cve_cannot_be_excepted(self):
+        with self.assertRaises(ValueError):
+            failures({}, [{"id": "CVE-2026-109618", "package": "php", "installed_version": "8.4.16", "reason": "test", "expires": "2099-01-01"}], datetime.date.today())
+
+    def test_exception_is_version_and_package_specific(self):
+        exception = {"id": "CVE-test", "package": "test", "installed_version": "1", "reason": "fixture", "expires": "2099-01-01"}
+        report = {"Results": [{"Vulnerabilities": [{"VulnerabilityID": "CVE-test", "PkgName": "other", "InstalledVersion": "1", "Severity": "HIGH"}]}]}
+        self.assertEqual(len(failures(report, [exception], datetime.date.today())), 1)
+
+    def test_expired_exception_fails(self):
+        with self.assertRaises(ValueError):
+            failures({}, [{"id": "CVE-test", "package": "test", "installed_version": "1", "reason": "fixture", "expires": "2000-01-01"}], datetime.date.today())
+
+    def test_clean_scan(self):
+        self.assertEqual(failures({"Results": []}, [], datetime.date.today()), [])
+
+
+if __name__ == "__main__":
+    unittest.main()

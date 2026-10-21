@@ -1,65 +1,150 @@
-name: Docker
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+name: Base images
 
 on:
-  push:
-    branches:
-      - 'main'
-    tags:
-      - 'v*'
   pull_request:
-    branches:
-      - 'main'
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+  schedule:
+    - cron: '31 5 * * 1'
 
-env:
-  # Use docker.io for Docker Hub if empty
-  REGISTRY: ghcr.io
-  # github.repository as <account>/<repo>
-  IMAGE_NAME: ${{ github.repository }}
+permissions:
+  contents: read
+
+concurrency:
+  group: base-images-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  policy:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { persist-credentials: false }
+      - run: python3 -m unittest discover -s tests -v
+      - id: matrix
+        env:
+          RELEASE: ${{ github.ref_type == 'tag' }}
+          REF: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          config = json.load(open('images.json'))
+          if os.environ['RELEASE'] == 'true' and os.environ['REF'] != config['release']:
+              raise SystemExit('Release tag must match images.json')
+          rows = [dict(v, arch=arch, runner=runner) for v in config['variants'] for arch, runner in [('amd64', 'ubuntu-24.04'), ('arm64', 'ubuntu-24.04-arm')]]
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write('value=' + json.dumps({'include': rows}) + '\n')
+          PY
+
+  verify:
+    needs: policy
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
-
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.policy.outputs.matrix) }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      # Login against a Docker registry except on PR
-      # https://github.com/docker/login-action
-      - name: Log into registry ${{ env.REGISTRY }}
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{raw}}
-
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { persist-credentials: false }
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          pull: true
+          load: true
+          platforms: linux/${{ matrix.arch }}
+          tags: local/base-image:test
+          build-args: PHP_BASE_IMAGE=${{ matrix.base }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+      - run: bash tests/smoke.sh local/base-image:test '${{ matrix.version }}'
+      - uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+        with: { version: v0.76.1, cache: false }
+      - name: Scan exact tested image
+        run: |
+          trivy image --image-src docker --format json --output scan.json local/base-image:test
+          trivy image --image-src docker --format cyclonedx --output sbom.cdx.json local/base-image:test
+          python3 tests/check_scan.py scan.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: security-${{ matrix.id }}-${{ matrix.arch }}
+          path: |
+            scan.json
+            sbom.cdx.json
+          if-no-files-found: warn
+          retention-days: 14
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        if: github.ref_type == 'tag'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish tested architecture
+        if: github.ref_type == 'tag'
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          TAG: ${{ matrix.tag }}-${{ matrix.arch }}
+          ID: ${{ matrix.id }}-${{ matrix.arch }}
+        run: |
+          if docker manifest inspect "$IMAGE:$TAG" >/dev/null 2>&1; then
+            echo 'Refusing to overwrite an existing release tag' >&2
+            exit 1
+          fi
+          docker tag local/base-image:test "$IMAGE:$TAG"
+          docker push "$IMAGE:$TAG"
+          mkdir -p digests
+          docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$TAG" > "digests/$ID.txt"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: github.ref_type == 'tag'
+        with:
+          name: digest-${{ matrix.id }}-${{ matrix.arch }}
+          path: digests/*.txt
+          retention-days: 30
+
+  publish:
+    if: github.ref_type == 'tag'
+    needs: verify
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { persist-credentials: false }
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: digests
+      - name: Assemble verified multi-architecture releases
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess
+          image = os.environ['IMAGE']
+          for variant in json.load(open('images.json'))['variants']:
+              tags = [variant['tag']] + ([variant['alias']] if variant.get('alias') else [])
+              sources = [pathlib.Path('digests', variant['id'] + '-' + arch + '.txt').read_text().strip() for arch in ['amd64', 'arm64']]
+              if not all(source.startswith(image + '@sha256:') for source in sources):
+                  raise SystemExit('Invalid source digest')
+              for tag in tags:
+                  if subprocess.run(['docker', 'manifest', 'inspect', image + ':' + tag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+                      raise SystemExit('Refusing to overwrite existing tag: ' + tag)
+                  subprocess.run(['docker', 'buildx', 'imagetools', 'create', '--tag', image + ':' + tag, *sources], check=True)
+                  subprocess.run(['docker', 'buildx', 'imagetools', 'inspect', image + ':' + tag], check=True)
+          PY
