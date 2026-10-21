@@ -24,8 +24,8 @@ RUN set -eux; \
     && mkdir -p /tmp/retained-coders /usr/local/share/base-image/extra-coders \
     && dpkg-query -W -f='${Package} ${Version}\n' libmagickcore-7.q16-10-extra > /usr/local/share/base-image/extra-coders/source-package.txt \
     && cp /usr/share/doc/libmagickcore-7.q16-10-extra/copyright /usr/local/share/base-image/extra-coders/copyright \
-    && dpkg-query -L libmagickcore-7.q16-10-extra | grep '/coders/.*\.so$' | while IFS= read -r module; do \
-        case "$module" in */exr.so) continue ;; esac; \
+    && dpkg-query -L libmagickcore-7.q16-10-extra | grep -E '/coders/.*\.(so|la)$' | while IFS= read -r module; do \
+        case "$module" in */exr.so|*/exr.la) continue ;; esac; \
         mkdir -p "/tmp/retained-coders$(dirname "$module")"; \
         cp "$module" "/tmp/retained-coders$module"; \
     done \
