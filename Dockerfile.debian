@@ -1,0 +1,83 @@
+# Legacy compatibility recipe; not the maintained release target.
+ARG PHP_BASE_IMAGE=php:8.4.27-apache-trixie@sha256:e6bad969f0b673ce9121c88dabb53488ab1ca139d8ebfac1d1b1ab63f245f725
+FROM composer:2.10.3@sha256:d0c32820c62cc860fddd22adceed4eeda7698b093a7a88d503414172ce400626 AS composer
+FROM ${PHP_BASE_IMAGE}
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# INSTALL SERVER DEPENDENCIES -------- #
+RUN set -eux; \
+    savedAptMark="$(apt-mark showmanual)"; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+    libmagickwand-dev git zip unzip cron libzip-dev libpq-dev libmagickcore-7.q16-10-extra \
+    && pecl install imagick-3.8.1 \
+    && pecl install xdebug-3.5.3 \
+    && pecl install redis-6.3.0 \
+    && docker-php-ext-enable imagick xdebug redis\
+    && docker-php-ext-install zip pdo_mysql pdo_pgsql mysqli gd sockets \
+    && mkdir -p /usr/local/share/base-image \
+    && php -r 'file_put_contents("/usr/local/share/base-image/imagick-formats.json", json_encode(array_values(array_diff(Imagick::queryFormats(), ["EXR"])), JSON_THROW_ON_ERROR));' \
+    # Preserve vendor-built optional codecs without the bundle's EXR dependency.
+    && mkdir -p /tmp/retained-coders /usr/local/share/base-image/extra-coders \
+    && dpkg-query -W -f='${Package} ${Version}\n' libmagickcore-7.q16-10-extra > /usr/local/share/base-image/extra-coders/source-package.txt \
+    && cp /usr/share/doc/libmagickcore-7.q16-10-extra/copyright /usr/local/share/base-image/extra-coders/copyright \
+    && dpkg-query -L libmagickcore-7.q16-10-extra | grep -E '/coders/.*\.(so|la)$' | while IFS= read -r module; do \
+        case "$module" in */exr.so|*/exr.la) continue ;; esac; \
+        mkdir -p "/tmp/retained-coders$(dirname "$module")"; \
+        cp "$module" "/tmp/retained-coders$module"; \
+    done \
+    && runtimeDeps="$(find /usr/local/lib/php/extensions /tmp/retained-coders -name '*.so' -exec ldd '{}' ';' \
+        | awk '/=>/ { print $(NF-1) }' | grep '^/' | xargs -r realpath | sort -u \
+        | xargs -r dpkg-query --search | cut -d: -f1 | sort -u)" \
+    && apt-mark auto '.*' >/dev/null \
+    && apt-mark manual $savedAptMark $runtimeDeps git zip unzip cron \
+    && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
+    && cp -a /tmp/retained-coders/usr/. /usr/ \
+    && rm -rf /tmp/retained-coders \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/pear \
+    && mv /var/www/html /var/www/public
+
+# POINT APACHE TO PUBLIC DIRECTORY --- #
+RUN sed -ri -e 's!/var/www/html!/var/www/public!g' /etc/apache2/sites-available/000-default.conf
+RUN sed -ri -e 's!/var/www/!/var/www/public!g' /etc/apache2/conf-available/*.conf
+
+RUN printf ' \n\
+    <Directory /var/www/public>\n\
+        Options FollowSymLinks\n\
+        AllowOverride All\n\
+        Order allow,deny\n\
+        Allow from all\n\
+    </Directory>\n\
+    ' >> /etc/apache2/sites-available/000-default.conf
+
+# CHANGE DEFAULT PHP CONFIG ---------- #
+RUN printf ' \n\
+file_uploads = On\n\
+memory_limit = 128M\n\
+upload_max_filesize = 100M\n\
+post_max_size = 100M\n\
+max_execution_time = 600\n\
+variables_order = EGPCS\n\
+display_errors = Off\n\
+display_startup_errors = Off\n\
+session.upload_progress.enabled = Off\n\
+' > /usr/local/etc/php/conf.d/docker-custom.ini
+
+RUN a2enmod rewrite
+
+# INSTALL COMPOSER ------------------- #
+COPY --from=composer /usr/bin/composer /usr/local/bin/composer
+
+WORKDIR /var/www
+
+# ADD LARAVEL SCHEDULE TO CRON ------- #
+# THIS ONLY WORKS FOR ENTRY POINT RUNNING CRONTAB, no background tasks will 
+# RUN echo "* * * * * root php /var/www/artisan schedule:run  > /proc/1/fd/1 2>/proc/1/fd/2"  >> /etc/crontab
+
+EXPOSE 80

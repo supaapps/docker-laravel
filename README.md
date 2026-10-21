@@ -8,7 +8,7 @@ address [the PHP emergency vulnerabilities](https://www.php.net/archive/2026.php
 Publication requires all runtime, build, and security gates; catalog entries are
 not evidence that a release has already been published.
 
-`Dockerfile.maintained` uses digest-pinned Wolfi with signature-verified vendor
+The default `Dockerfile` uses digest-pinned Wolfi with signature-verified vendor
 packages: libxml2 2.15.4 and ImageMagick 7.1.2.34. PHP and extension package versions
 are pinned per branch. No private security patches or mixed-distribution binaries
 are used. Transitive packages are resolved by the vendor's signed repository;
@@ -47,7 +47,7 @@ Composer or the entire builder filesystem. Use the matching PHP branch for both
 stages; custom extensions must use the same ABI and library versions. Runtime
 images include CLI PHP so queues can override the command with `php artisan ...`.
 
-The original Debian compatibility recipe remains in `Dockerfile` with its own
+The original Debian compatibility recipe remains in `Dockerfile.debian` with its own
 `tests/smoke.sh`. It is not part of the new publication catalog and is not claimed
 to pass the current security gate. Existing published tags are never overwritten.
 The workflow does not update `main`, `latest` or historical image aliases.
@@ -56,15 +56,17 @@ Local verification of the default PHP 8.4 variant (Docker required):
 
 ```sh
 python3 -m unittest discover -s tests -v
-docker build --pull -f Dockerfile.maintained --target runtime -t local/runtime:test .
+docker build --pull --target runtime -t local/runtime:test .
 bash tests/maintained-smoke.sh local/runtime:test 8.4.27 runtime
-docker build --pull -f Dockerfile.maintained --target build -t local/build:test .
+docker build --pull --target build -t local/build:test .
 bash tests/maintained-smoke.sh local/build:test 8.4.27 build
 ```
 
 CI verifies loaded XML libraries, DOM/SimpleXML, PDO, required PHP extensions,
 SVG/raster processing, EXR absence, Apache rewrites, HTTP/multipart, graceful stop,
 and an actual compiled PHP extension in every build variant. Both profiles are
+also tested with fresh Laravel installations (Laravel 12 on PHP 8.2 and Laravel
+13 on PHP 8.3/8.4), including CLI boot and the HTTP health route. Both profiles are
 scanned; image-security gates and SBOM artifacts remain mandatory. No blanket
 exceptions are used. `security-exceptions.json` is package/version-specific and
 expiring and cannot exempt either PHP emergency CVE.

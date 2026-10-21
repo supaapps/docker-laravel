@@ -1,82 +1,57 @@
-ARG PHP_BASE_IMAGE=php:8.4.27-apache-trixie@sha256:e6bad969f0b673ce9121c88dabb53488ab1ca139d8ebfac1d1b1ab63f245f725
-FROM composer:2.10.3@sha256:d0c32820c62cc860fddd22adceed4eeda7698b093a7a88d503414172ce400626 AS composer
-FROM ${PHP_BASE_IMAGE}
+# Default output is the maintained runtime; use --target build for tooling.
+ARG BASE_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:81211e15a86ea1d5357f284482af45730c51de45eaf10ad9ce205d6bfc2df323
+ARG COMPOSER_IMAGE=composer:2.10.3@sha256:d0c32820c62cc860fddd22adceed4eeda7698b093a7a88d503414172ce400626
+FROM ${COMPOSER_IMAGE} AS composer
+FROM ${BASE_IMAGE} AS common
+ARG PHP_BRANCH=8.4
+ARG PHP_PACKAGE_VERSION=8.4.27-r0
+ARG IMAGICK_PACKAGE_VERSION=3.8.1-r5
+ARG REDIS_PACKAGE_VERSION=6.3.0-r6
+ENV PHP_BRANCH=${PHP_BRANCH} PHP_INI_DIR=/etc/php TZ=UTC
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=UTC
-
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-# INSTALL SERVER DEPENDENCIES -------- #
+# All native libraries and PHP modules come from one signature-verified vendor.
 RUN set -eux; \
-    savedAptMark="$(apt-mark showmanual)"; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends \
-    libmagickwand-dev git zip unzip cron libzip-dev libpq-dev libmagickcore-7.q16-10-extra \
-    && pecl install imagick-3.8.1 \
-    && pecl install xdebug-3.5.3 \
-    && pecl install redis-6.3.0 \
-    && docker-php-ext-enable imagick xdebug redis\
-    && docker-php-ext-install zip pdo_mysql pdo_pgsql mysqli gd sockets \
-    && mkdir -p /usr/local/share/base-image \
-    && php -r 'file_put_contents("/usr/local/share/base-image/imagick-formats.json", json_encode(array_values(array_diff(Imagick::queryFormats(), ["EXR"])), JSON_THROW_ON_ERROR));' \
-    # Preserve vendor-built optional codecs without the bundle's EXR dependency.
-    && mkdir -p /tmp/retained-coders /usr/local/share/base-image/extra-coders \
-    && dpkg-query -W -f='${Package} ${Version}\n' libmagickcore-7.q16-10-extra > /usr/local/share/base-image/extra-coders/source-package.txt \
-    && cp /usr/share/doc/libmagickcore-7.q16-10-extra/copyright /usr/local/share/base-image/extra-coders/copyright \
-    && dpkg-query -L libmagickcore-7.q16-10-extra | grep -E '/coders/.*\.(so|la)$' | while IFS= read -r module; do \
-        case "$module" in */exr.so|*/exr.la) continue ;; esac; \
-        mkdir -p "/tmp/retained-coders$(dirname "$module")"; \
-        cp "$module" "/tmp/retained-coders$module"; \
-    done \
-    && runtimeDeps="$(find /usr/local/lib/php/extensions /tmp/retained-coders -name '*.so' -exec ldd '{}' ';' \
-        | awk '/=>/ { print $(NF-1) }' | grep '^/' | xargs -r realpath | sort -u \
-        | xargs -r dpkg-query --search | cut -d: -f1 | sort -u)" \
-    && apt-mark auto '.*' >/dev/null \
-    && apt-mark manual $savedAptMark $runtimeDeps git zip unzip cron \
-    && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
-    && cp -a /tmp/retained-coders/usr/. /usr/ \
-    && rm -rf /tmp/retained-coders \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /tmp/pear \
-    && mv /var/www/html /var/www/public
+    set -- \
+      apache2=2.4.69-r1 \
+      libxml2-16=2.15.4-r1 imagemagick-7=7.1.2.34-r0 \
+      "php-${PHP_BRANCH}=${PHP_PACKAGE_VERSION}" \
+      "php-${PHP_BRANCH}-apache=${PHP_PACKAGE_VERSION}" \
+      "php-${PHP_BRANCH}-imagick=${IMAGICK_PACKAGE_VERSION}" \
+      "php-${PHP_BRANCH}-redis=${REDIS_PACKAGE_VERSION}"; \
+    for extension in ctype curl dom fileinfo iconv mbstring mysqli mysqlnd openssl \
+      opcache pcntl pdo pdo_mysql pdo_pgsql pdo_sqlite simplexml sockets \
+      xml xmlreader xmlwriter zip gd phar posix exif bcmath intl sodium; do \
+      set -- "$@" "php-${PHP_BRANCH}-${extension}=${PHP_PACKAGE_VERSION}"; \
+    done; \
+    apk add --no-cache "$@"; \
+    if ! id www-data >/dev/null 2>&1; then \
+      grep -q '^www-data:' /etc/group || addgroup -S -g 33 www-data; \
+      adduser -S -D -H -u 33 -G www-data www-data; \
+    fi; \
+    mkdir -p /var/www/public /run/apache2 /usr/local/share/base-image; \
+    printf 'file_uploads=On\nmemory_limit=128M\nupload_max_filesize=100M\npost_max_size=100M\nmax_execution_time=600\nvariables_order=EGPCS\ndisplay_errors=Off\ndisplay_startup_errors=Off\nsession.upload_progress.enabled=Off\n' > /etc/php/conf.d/99-base-image.ini; \
+    php -r 'file_put_contents("/usr/local/share/base-image/imagick-formats.json", json_encode(Imagick::queryFormats(), JSON_THROW_ON_ERROR));'
+COPY config/maintained-httpd.conf /etc/apache2/httpd.conf
+COPY scripts/maintained-httpd-foreground /usr/local/bin/apache2-foreground
+RUN chmod 0755 /usr/local/bin/apache2-foreground
+WORKDIR /var/www
+EXPOSE 80
+STOPSIGNAL SIGWINCH
+CMD ["apache2-foreground"]
 
-# POINT APACHE TO PUBLIC DIRECTORY --- #
-RUN sed -ri -e 's!/var/www/html!/var/www/public!g' /etc/apache2/sites-available/000-default.conf
-RUN sed -ri -e 's!/var/www/!/var/www/public!g' /etc/apache2/conf-available/*.conf
-
-RUN printf ' \n\
-    <Directory /var/www/public>\n\
-        Options FollowSymLinks\n\
-        AllowOverride All\n\
-        Order allow,deny\n\
-        Allow from all\n\
-    </Directory>\n\
-    ' >> /etc/apache2/sites-available/000-default.conf
-
-# CHANGE DEFAULT PHP CONFIG ---------- #
-RUN printf ' \n\
-file_uploads = On\n\
-memory_limit = 128M\n\
-upload_max_filesize = 100M\n\
-post_max_size = 100M\n\
-max_execution_time = 600\n\
-variables_order = EGPCS\n\
-display_errors = Off\n\
-display_startup_errors = Off\n\
-session.upload_progress.enabled = Off\n\
-' > /usr/local/etc/php/conf.d/docker-custom.ini
-
-RUN a2enmod rewrite
-
-# INSTALL COMPOSER ------------------- #
+FROM common AS build
+ARG PHP_BRANCH
+ARG PHP_PACKAGE_VERSION
+ARG XDEBUG_PACKAGE_VERSION=3.5.3-r2
+RUN apk add --no-cache build-base autoconf automake libtool pkgconf git unzip zip \
+      "php-${PHP_BRANCH}-dev=${PHP_PACKAGE_VERSION}" \
+      "php-${PHP_BRANCH}-pear=${PHP_PACKAGE_VERSION}" \
+      "php-${PHP_BRANCH}-xdebug=${XDEBUG_PACKAGE_VERSION}"
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 
-WORKDIR /var/www
-
-# ADD LARAVEL SCHEDULE TO CRON ------- #
-# THIS ONLY WORKS FOR ENTRY POINT RUNNING CRONTAB, no background tasks will 
-# RUN echo "* * * * * root php /var/www/artisan schedule:run  > /proc/1/fd/1 2>/proc/1/fd/2"  >> /etc/crontab
-
-EXPOSE 80
+# Fresh common stage: no compiler, development headers, Composer or Xdebug layers.
+FROM common AS runtime
+# Some vendor runtime dependencies carry a -dev package dependency (e.g. Brotli).
+# Keep their package records and shared libraries, but omit build-only files.
+RUN rm -rf /usr/include /usr/lib/pkgconfig /usr/share/pkgconfig \
+    && find /usr/lib -name '*.a' -delete

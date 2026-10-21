@@ -28,7 +28,7 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(profiles, {(branch, profile) for branch in floors for profile in ("build", "runtime")})
 
     def test_runtime_does_not_inherit_build_tools(self):
-        dockerfile = Path("Dockerfile.maintained").read_text()
+        dockerfile = Path("Dockerfile").read_text()
         self.assertIn("FROM common AS build", dockerfile)
         self.assertIn("FROM common AS runtime", dockerfile)
         self.assertNotIn("FROM build AS runtime", dockerfile)
@@ -69,7 +69,7 @@ class PolicyTests(unittest.TestCase):
         assert_missing(1, "manifest unknown")
 
     def test_build_dependency_cleanup_preserves_base_toolchain(self):
-        dockerfile = Path("Dockerfile").read_text()
+        dockerfile = Path("Dockerfile.debian").read_text()
         self.assertIn('savedAptMark="$(apt-mark showmanual)"', dockerfile)
         self.assertIn('apt-mark manual $savedAptMark $runtimeDeps', dockerfile)
         self.assertIn('apt-get purge -y --auto-remove', dockerfile)
