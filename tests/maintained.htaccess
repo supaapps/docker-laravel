@@ -1,0 +1,8 @@
+SetEnv BASE_IMAGE_ENV checked
+SetEnvIf Request_Method GET BASE_IMAGE_REQUEST=checked
+ExpiresActive On
+ExpiresByType application/json "access plus 60 seconds"
+AddOutputFilterByType DEFLATE application/json
+Redirect 302 /redirect-smoke /rewritten-smoke
+RewriteEngine On
+RewriteRule ^rewritten-smoke$ image-smoke.php [L]

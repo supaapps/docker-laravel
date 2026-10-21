@@ -1,0 +1,13 @@
+{
+  "release": "v5.0.0",
+  "base_image": "cgr.dev/chainguard/wolfi-base@sha256:81211e15a86ea1d5357f284482af45730c51de45eaf10ad9ce205d6bfc2df323",
+  "extensions": ["imagick", "redis", "zip", "pdo_mysql", "pdo_pgsql", "mysqli", "gd", "sockets"],
+  "variants": [
+    {"id":"php8.2-build","branch":"8.2","version":"8.2.35","profile":"build","php_package":"8.2.35-r0","imagick_package":"3.8.1-r12","redis_package":"6.3.0-r7","xdebug_package":"3.5.3-r2","tag":"php8.2-build-20261022.1"},
+    {"id":"php8.2-runtime","branch":"8.2","version":"8.2.35","profile":"runtime","php_package":"8.2.35-r0","imagick_package":"3.8.1-r12","redis_package":"6.3.0-r7","xdebug_package":"3.5.3-r2","tag":"php8.2-runtime-20261022.1"},
+    {"id":"php8.3-build","branch":"8.3","version":"8.3.36","profile":"build","php_package":"8.3.36-r0","imagick_package":"3.8.1-r12","redis_package":"6.3.0-r6","xdebug_package":"3.5.3-r1","tag":"php8.3-build-20261022.1"},
+    {"id":"php8.3-runtime","branch":"8.3","version":"8.3.36","profile":"runtime","php_package":"8.3.36-r0","imagick_package":"3.8.1-r12","redis_package":"6.3.0-r6","xdebug_package":"3.5.3-r1","tag":"php8.3-runtime-20261022.1"},
+    {"id":"php8.4-build","branch":"8.4","version":"8.4.27","profile":"build","php_package":"8.4.27-r0","imagick_package":"3.8.1-r5","redis_package":"6.3.0-r6","xdebug_package":"3.5.3-r2","tag":"php8.4-build-20261022.1"},
+    {"id":"php8.4-runtime","branch":"8.4","version":"8.4.27","profile":"runtime","php_package":"8.4.27-r0","imagick_package":"3.8.1-r5","redis_package":"6.3.0-r6","xdebug_package":"3.5.3-r2","tag":"php8.4-runtime-20261022.1"}
+  ]
+}

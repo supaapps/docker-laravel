@@ -1,0 +1,6 @@
+.git
+.github
+tests
+scan.json
+sbom.cdx.json
+**/__pycache__
