@@ -15,6 +15,13 @@ checks compare image formats before/after cleanup and compile an additional
 extension in a downstream image. Consumers compiling against additional system
 libraries must install the corresponding development packages explicitly.
 
+OpenEXR support is intentionally excluded. Other optional codecs, including SVG,
+are retained from Debian's vendor-built codec bundle while the bundle and its
+OpenEXR runtime dependency are removed. The source package version and copyright
+are recorded under `/usr/local/share/base-image/extra-coders/`. No custom library
+patches are applied. Native tests require the same format list except EXR, verify
+SVG/PNG/JPEG/GIF processing, and reject installed OpenEXR libraries or codecs.
+
 | Image tag | PHP | Purpose |
 | --- | --- | --- |
 | `php8.2-20261021.1` | 8.2.35 | Existing PHP 8.2 consumers |

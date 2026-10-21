@@ -19,13 +19,24 @@ RUN set -eux; \
     && docker-php-ext-enable imagick xdebug redis\
     && docker-php-ext-install zip pdo_mysql pdo_pgsql mysqli gd sockets \
     && mkdir -p /usr/local/share/base-image \
-    && php -r 'file_put_contents("/usr/local/share/base-image/imagick-formats.json", json_encode(Imagick::queryFormats(), JSON_THROW_ON_ERROR));' \
-    && runtimeDeps="$(find /usr/local/lib/php/extensions -name '*.so' -exec ldd '{}' ';' \
+    && php -r 'file_put_contents("/usr/local/share/base-image/imagick-formats.json", json_encode(array_values(array_diff(Imagick::queryFormats(), ["EXR"])), JSON_THROW_ON_ERROR));' \
+    # Preserve vendor-built optional codecs without the bundle's EXR dependency.
+    && mkdir -p /tmp/retained-coders /usr/local/share/base-image/extra-coders \
+    && dpkg-query -W -f='${Package} ${Version}\n' libmagickcore-7.q16-10-extra > /usr/local/share/base-image/extra-coders/source-package.txt \
+    && cp /usr/share/doc/libmagickcore-7.q16-10-extra/copyright /usr/local/share/base-image/extra-coders/copyright \
+    && dpkg-query -L libmagickcore-7.q16-10-extra | grep '/coders/.*\.so$' | while IFS= read -r module; do \
+        case "$module" in */exr.so) continue ;; esac; \
+        mkdir -p "/tmp/retained-coders$(dirname "$module")"; \
+        cp "$module" "/tmp/retained-coders$module"; \
+    done \
+    && runtimeDeps="$(find /usr/local/lib/php/extensions /tmp/retained-coders -name '*.so' -exec ldd '{}' ';' \
         | awk '/=>/ { print $(NF-1) }' | grep '^/' | xargs -r realpath | sort -u \
         | xargs -r dpkg-query --search | cut -d: -f1 | sort -u)" \
     && apt-mark auto '.*' >/dev/null \
-    && apt-mark manual $savedAptMark $runtimeDeps git zip unzip cron libmagickcore-7.q16-10-extra \
+    && apt-mark manual $savedAptMark $runtimeDeps git zip unzip cron \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
+    && cp -a /tmp/retained-coders/usr/. /usr/ \
+    && rm -rf /tmp/retained-coders \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/pear \

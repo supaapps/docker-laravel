@@ -1,6 +1,14 @@
 <?php
 $expected = json_decode(file_get_contents('/usr/local/share/base-image/imagick-formats.json'), true, 512, JSON_THROW_ON_ERROR);
 $actual = Imagick::queryFormats();
+if (in_array('EXR', $actual, true)) {
+    throw new RuntimeException('OpenEXR codec must not be available');
+}
+foreach (['SVG', 'PNG', 'JPEG', 'GIF'] as $format) {
+    if (!in_array($format, $actual, true)) {
+        throw new RuntimeException('Required image format missing: ' . $format);
+    }
+}
 sort($expected);
 sort($actual);
 if ($expected !== $actual) {

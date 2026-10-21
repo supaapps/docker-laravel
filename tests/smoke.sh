@@ -22,6 +22,14 @@ docker run --rm "$image" sh -ec '
         status=$(dpkg-query -W -f="\${db:Status-Status}" "$package" 2>/dev/null || true)
         test "$status" != installed || { echo "Unexpected build-only package: $package" >&2; exit 1; }
     done
+    if dpkg-query -W -f="\${binary:Package} \${db:Status-Status}\n" 2>/dev/null | grep -Ei "^(libopenexr|openexr)[^ ]* installed$"; then
+        echo "OpenEXR runtime package must not be installed" >&2
+        exit 1
+    fi
+    if find /usr/lib /usr/local/lib -type f \( -iname "*openexr*.so*" -o -name exr.so \) | grep -q .; then
+        echo "OpenEXR shared library or codec must not be present" >&2
+        exit 1
+    fi
 '
 docker build --pull=false -t local/downstream-smoke:test -f tests/downstream/Dockerfile .
 docker create --name "$container" -p 127.0.0.1::80 "$image" >/dev/null
