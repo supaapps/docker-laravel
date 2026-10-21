@@ -35,12 +35,13 @@ jobs:
           config = json.load(open('images.json'))
           if os.environ['RELEASE'] == 'true' and os.environ['REF'] != config['release']:
               raise SystemExit('Release tag must match images.json')
-          rows = [dict(v, arch=arch, runner=runner) for v in config['variants'] for arch, runner in [('amd64', 'ubuntu-24.04'), ('arm64', 'ubuntu-24.04-arm')]]
+          rows = [dict(v, arch=arch, runner=runner, extensions=','.join(config['extensions'])) for v in config['variants'] for arch, runner in [('amd64', 'ubuntu-24.04'), ('arm64', 'ubuntu-24.04-arm')]]
           with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
               out.write('value=' + json.dumps({'include': rows}) + '\n')
           PY
 
   verify:
+    name: verify (${{ matrix.id }}, ${{ matrix.arch }})
     needs: policy
     runs-on: ${{ matrix.runner }}
     permissions:
@@ -61,10 +62,12 @@ jobs:
           platforms: linux/${{ matrix.arch }}
           tags: local/base-image:test
           build-args: PHP_BASE_IMAGE=${{ matrix.base }}
+          cache-from: type=gha,scope=${{ matrix.id }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=min,scope=${{ matrix.id }}-${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
-      - run: bash tests/smoke.sh local/base-image:test '${{ matrix.version }}'
+      - run: bash tests/smoke.sh local/base-image:test '${{ matrix.version }}' '${{ matrix.extensions }}'
       - uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
         with: { version: v0.76.1, cache: false }
       - name: Scan exact tested image
@@ -94,10 +97,7 @@ jobs:
           TAG: ${{ matrix.tag }}-${{ matrix.arch }}
           ID: ${{ matrix.id }}-${{ matrix.arch }}
         run: |
-          if docker manifest inspect "$IMAGE:$TAG" >/dev/null 2>&1; then
-            echo 'Refusing to overwrite an existing release tag' >&2
-            exit 1
-          fi
+          python3 tests/assert_new_tag.py "$IMAGE:$TAG"
           docker tag local/base-image:test "$IMAGE:$TAG"
           docker push "$IMAGE:$TAG"
           mkdir -p digests
@@ -143,8 +143,7 @@ jobs:
               if not all(source.startswith(image + '@sha256:') for source in sources):
                   raise SystemExit('Invalid source digest')
               for tag in tags:
-                  if subprocess.run(['docker', 'manifest', 'inspect', image + ':' + tag], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
-                      raise SystemExit('Refusing to overwrite existing tag: ' + tag)
+                  subprocess.run(['python3', 'tests/assert_new_tag.py', image + ':' + tag], check=True)
                   subprocess.run(['docker', 'buildx', 'imagetools', 'create', '--tag', image + ':' + tag, *sources], check=True)
                   subprocess.run(['docker', 'buildx', 'imagetools', 'inspect', image + ':' + tag], check=True)
           PY

@@ -4,7 +4,8 @@ import re
 import unittest
 from pathlib import Path
 
-from check_scan import failures
+from check_scan import failures, validate_report
+from assert_new_tag import assert_missing
 
 
 class PolicyTests(unittest.TestCase):
@@ -39,6 +40,17 @@ class PolicyTests(unittest.TestCase):
 
     def test_clean_scan(self):
         self.assertEqual(failures({"Results": []}, [], datetime.date.today()), [])
+
+    def test_missing_scan_fails_closed(self):
+        for report in [{}, {"ArtifactType": "container_image", "Results": []}]:
+            with self.assertRaises(ValueError):
+                validate_report(report)
+
+    def test_existing_or_unreachable_tag_fails_closed(self):
+        for code, message in [(0, ""), (1, "unauthorized"), (1, "connection timeout")]:
+            with self.assertRaises(ValueError):
+                assert_missing(code, message)
+        assert_missing(1, "manifest unknown")
 
 
 if __name__ == "__main__":

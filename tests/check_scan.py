@@ -25,11 +25,19 @@ def failures(report, exceptions, today):
     return rejected
 
 
+def validate_report(report):
+    if report.get("ArtifactType") != "container_image" or not report.get("Results"):
+        raise ValueError("Expected a completed container-image vulnerability report")
+    if not any(result.get("Class") == "os-pkgs" for result in report["Results"]):
+        raise ValueError("The operating-system package scan did not execute")
+
+
 if __name__ == "__main__":
     with open(sys.argv[1]) as handle:
         report = json.load(handle)
     with open("security-exceptions.json") as handle:
         exceptions = json.load(handle)
+    validate_report(report)
     rejected = failures(report, exceptions, datetime.datetime.now(datetime.timezone.utc).date())
     for entry in rejected:
         print("UNRESOLVED", *entry)

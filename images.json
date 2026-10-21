@@ -1,5 +1,6 @@
 {
   "release": "v4.0.3",
+  "extensions": ["imagick", "redis", "xdebug", "zip", "pdo_mysql", "pdo_pgsql", "mysqli", "gd", "sockets"],
   "variants": [
     {"id": "php8.2", "version": "8.2.35", "base": "php:8.2.35-apache-bookworm@sha256:92d2d6a7c7d372d3f19192b23366001edf55a054dc0e727a52c587f9d142fc81", "tag": "php8.2-20261021.1"},
     {"id": "php8.3", "version": "8.3.36", "base": "php:8.3.36-apache-bookworm@sha256:28e0194d65d1c25ae279366137a027e2d8a835f1b37d8b96724a32c401ef99eb", "tag": "php8.3-20261021.1"},
