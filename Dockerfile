@@ -2,19 +2,30 @@ ARG PHP_BASE_IMAGE=php:8.4.27-apache-trixie@sha256:e6bad969f0b673ce9121c88dabb53
 FROM composer:2.10.3@sha256:d0c32820c62cc860fddd22adceed4eeda7698b093a7a88d503414172ce400626 AS composer
 FROM ${PHP_BASE_IMAGE}
 
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # INSTALL SERVER DEPENDENCIES -------- #
-RUN apt-get update && apt-get install -y libmcrypt-dev \
-    libmagickwand-dev git zip unzip cron libzip-dev libpq-dev --no-install-recommends \
+RUN set -eux; \
+    savedAptMark="$(apt-mark showmanual)"; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+    libmagickwand-dev git zip unzip cron libzip-dev libpq-dev libmagickcore-7.q16-10-extra \
     && pecl install imagick-3.8.1 \
     && pecl install xdebug-3.5.3 \
     && pecl install redis-6.3.0 \
     && docker-php-ext-enable imagick xdebug redis\
     && docker-php-ext-install zip pdo_mysql pdo_pgsql mysqli gd sockets \
+    && mkdir -p /usr/local/share/base-image \
+    && php -r 'file_put_contents("/usr/local/share/base-image/imagick-formats.json", json_encode(Imagick::queryFormats(), JSON_THROW_ON_ERROR));' \
+    && runtimeDeps="$(find /usr/local/lib/php/extensions -name '*.so' -exec ldd '{}' ';' \
+        | awk '/=>/ { print $(NF-1) }' | grep '^/' | xargs -r realpath | sort -u \
+        | xargs -r dpkg-query --search | cut -d: -f1 | sort -u)" \
+    && apt-mark auto '.*' >/dev/null \
+    && apt-mark manual $savedAptMark $runtimeDeps git zip unzip cron libmagickcore-7.q16-10-extra \
+    && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/pear \

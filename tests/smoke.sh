@@ -16,6 +16,14 @@ echo PHP_VERSION, " ", PHP_SAPI, PHP_EOL;
 ' "$expected" "$extensions"
 docker run --rm "$image" composer --version --no-ansi
 docker run --rm "$image" apache2ctl -t
+docker run --rm -i "$image" php < tests/features.php
+docker run --rm "$image" sh -ec '
+    for package in libmcrypt-dev libmagickwand-dev libzip-dev libpq-dev; do
+        status=$(dpkg-query -W -f="\${db:Status-Status}" "$package" 2>/dev/null || true)
+        test "$status" != installed || { echo "Unexpected build-only package: $package" >&2; exit 1; }
+    done
+'
+docker build --pull=false -t local/downstream-smoke:test -f tests/downstream/Dockerfile .
 docker create --name "$container" -p 127.0.0.1::80 "$image" >/dev/null
 docker cp tests/http.php "$container:/var/www/public/image-smoke.php"
 docker start "$container" >/dev/null

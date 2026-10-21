@@ -52,6 +52,13 @@ class PolicyTests(unittest.TestCase):
                 assert_missing(code, message)
         assert_missing(1, "manifest unknown")
 
+    def test_build_dependency_cleanup_preserves_base_toolchain(self):
+        dockerfile = Path("Dockerfile").read_text()
+        self.assertIn('savedAptMark="$(apt-mark showmanual)"', dockerfile)
+        self.assertIn('apt-mark manual $savedAptMark $runtimeDeps', dockerfile)
+        self.assertIn('apt-get purge -y --auto-remove', dockerfile)
+        self.assertNotIn('apt-get install -y libmcrypt-dev', dockerfile)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,6 +9,12 @@ to upstream multi-architecture digests. These releases address
 All new variants use Debian 13 (Trixie), matching the published `v4.0.2` OS
 baseline. Older PHP image lines also require OS-level compatibility testing.
 
+Extension build dependencies are removed after compilation; runtime libraries,
+image-format modules, and the upstream PHP build toolchain are retained. Native
+checks compare image formats before/after cleanup and compile an additional
+extension in a downstream image. Consumers compiling against additional system
+libraries must install the corresponding development packages explicitly.
+
 | Image tag | PHP | Purpose |
 | --- | --- | --- |
 | `php8.2-20261021.1` | 8.2.35 | Existing PHP 8.2 consumers |
