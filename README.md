@@ -16,8 +16,8 @@ final SBOMs and image digests record the resolved dependency set.
 
 | Profile | Contents | Intended use |
 | --- | --- | --- |
-| `php8.4-build-20261022.1` (also 8.2/8.3) | Runtime plus Composer, compiler, PHP headers, phpize, PECL, Git and Xdebug | Build dependencies and custom extensions |
-| `php8.4-runtime-20261022.1` (also 8.2/8.3) | PHP CLI, Apache/mod_php, required PHP extensions and image libraries | Web, queue and scheduled Artisan processes |
+| `5.0.1-php8.4-build` (also 8.2/8.3) | Runtime plus Composer, compiler, PHP headers, phpize, PECL, Git and Xdebug | Build dependencies and custom extensions |
+| `5.0.1-php8.4-runtime` (also 8.2/8.3) | PHP CLI, Apache/mod_php, required PHP extensions and image libraries | Web, queue and scheduled Artisan processes |
 
 Build and runtime share the same vendor PHP and native libraries. The runtime
 starts from the common stage, not the build stage: no compiler, development
@@ -52,6 +52,12 @@ The original Debian compatibility recipe remains in `Dockerfile.debian` with its
 to pass the current security gate. Existing published tags are never overwritten.
 The workflow does not update `main`, `latest` or historical image aliases.
 
+Tags use `<release>-php<branch>-<profile>`; pin the published digest as well.
+Existing date-based tags remain valid. The workflow's `publish_version_tags`
+manual option adds release-version names to already verified published indices
+without rebuilding them. It preserves both platforms and the exact digest,
+accepts an existing tag only when that digest matches, and rejects mismatches.
+
 ### Rebuild And Release Recovery
 
 Wolfi's live signed package index may remove superseded pinned versions. A source
@@ -64,7 +70,7 @@ Each architecture is published only after its own tests and scan pass. Public
 multi-architecture tags are assembled only after every matrix job passes. A
 failed release can leave architecture tags or some completed variant tags behind.
 Do not overwrite or delete those tags to rerun: record their digests, increment
-the catalog's image-tag revision and release version, and publish from a new
+the release version and matching catalog tags, and publish from a new
 reviewed commit/tag. Partial releases must not be presented as complete releases.
 An already-published image is not rebuilt under the same tag.
 
