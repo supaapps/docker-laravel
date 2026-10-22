@@ -21,8 +21,18 @@ services:
       timeout: 2s
       retries: 10
 
+  dependencies:
+    build:
+      context: .
+      target: build
+    volumes:
+      - ./:/var/www
+    entrypoint: ["composer", "install", "--no-plugins", "--no-scripts", "--no-interaction", "--prefer-dist"]
+
   api:
-    image: ghcr.io/supaapps/docker-laravel
+    build:
+      context: .
+      target: runtime
     ports:
       - 8080:80
     volumes:
@@ -30,23 +40,24 @@ services:
       - ./vendor:/var/www/vendor:ro,cached
     entrypoint: '/var/www/docker/startup.sh'
     depends_on:
+      dependencies:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
 
   queue:
-    image: ghcr.io/supaapps/docker-laravel
+    build:
+      context: .
+      target: runtime
     entrypoint: "php /var/www/artisan queue:work --tries=5"
     volumes:
       - ./:/var/www
     depends_on:
-      - api
+      dependencies:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
 
-#   cron:
-#     image: ghcr.io/supaapps/docker-laravel
-#     entrypoint: "cron -f -l"
-#     volumes:
-#       - ./:/var/www
-#     depends_on:
-#       - api
+# Run scheduled jobs with: php /var/www/artisan schedule:work
