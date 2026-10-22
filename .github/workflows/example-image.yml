@@ -1,0 +1,27 @@
+name: Example image
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  generated-image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { persist-credentials: false }
+      - name: Create disposable Laravel project and render Docker stub
+        run: |
+          mkdir -p fixture
+          docker run --rm -v "$PWD/fixture:/fixture" --entrypoint composer ghcr.io/supaapps/docker-laravel:php8.4-build-20261022.1@sha256:3d649a08e4f5a5e177c30c9a1914428ca5543ac88c5959a5fce7f4c0b4dba1cf create-project --no-plugins --no-scripts --no-dev --no-interaction laravel/laravel /fixture '^12.0'
+          mkdir -p fixture/docker
+          cp example/Dockerfile fixture/Dockerfile
+          cp example/docker/startup.sh fixture/docker/startup.sh
+          cp example/.dockerignore fixture/.dockerignore
+          docker compose -f example/docker-compose.yml config --quiet
+      - name: Build and boot generated runtime
+        run: |
+          docker build --target runtime -t local/generated:runtime fixture
+          docker run --rm --network none --entrypoint php local/generated:runtime artisan --version
+          docker run --rm --network none --entrypoint httpd local/generated:runtime -t
+          docker run --rm --entrypoint sh local/generated:runtime -ec '! command -v composer; ! command -v gcc; test ! -f /var/www/.env'

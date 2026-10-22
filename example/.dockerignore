@@ -1,0 +1,13 @@
+.git
+.github
+.env
+.env.*
+auth.json
+**/auth.json
+vendor
+node_modules
+test-output
+storage/app/*
+storage/logs/*
+storage/framework/*
+bootstrap/cache/*.php

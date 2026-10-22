@@ -17,6 +17,15 @@ DB_PASSWORD=$(openssl rand -hex 12)
 # DOWNLOAD DOCKER FILES -------------- #
 dl_from_private_repo docker-compose.yml
 dl_from_private_repo docker/startup.sh
+if [ ! -f Dockerfile ]; then
+    dl_from_private_repo Dockerfile
+else
+    printf '%s\n' 'Existing Dockerfile retained; compare it with the maintained example before use.'
+fi
+# Exclude local credentials even when an existing ignore file is retained.
+for pattern in .git .env '.env.*' auth.json '**/auth.json' vendor node_modules; do
+    grep -Fxq "$pattern" .dockerignore 2>/dev/null || printf '\n%s\n' "$pattern" >> .dockerignore
+done
 
 # REPLACE VARIABLES ------------------ #
 echo -e "\n♻️ Updating variables"

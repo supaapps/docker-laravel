@@ -94,8 +94,11 @@ upstream end of security support on 2026-12-31.
 
 ## Clone docker compose example to Laravel project
 
-The historical generator below targets the legacy image layout; review and
-adapt its output before using a v5 build/runtime image.
+The example uses matching pinned build/runtime images. A one-shot dependency
+service installs development dependencies for the bind-mounted local project;
+the API and queue use the runtime stage. Production images install dependencies
+at build time, never at startup. Review an existing Dockerfile before migrating;
+the clone script intentionally does not overwrite it.
 
 Go to Laravel project then run:
 
