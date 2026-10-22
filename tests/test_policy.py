@@ -21,7 +21,7 @@ class PolicyTests(unittest.TestCase):
             self.assertEqual(variant["branch"], variant["version"].rsplit(".", 1)[0])
             self.assertIn(variant["profile"], ("build", "runtime"))
             self.assertEqual(variant["php_package"], variant["version"] + "-r0")
-            self.assertRegex(variant["tag"], r"^php8\.[234]-(build|runtime)-[0-9]{8}\.[1-9][0-9]*$")
+            self.assertEqual(variant["tag"], config["release"].removeprefix("v") + "-" + variant["id"])
             self.assertNotIn(variant["tag"], tags)
             tags.add(variant["tag"])
             profiles.add((variant["branch"], variant["profile"]))

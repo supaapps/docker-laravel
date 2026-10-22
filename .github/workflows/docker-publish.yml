@@ -6,6 +6,11 @@ on:
     branches: [main]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      publish_version_tags:
+        description: Add version tags to existing released image digests without rebuilding
+        type: boolean
+        default: false
   schedule:
     - cron: '31 5 * * 1'
 
@@ -17,7 +22,36 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  version-tags:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_version_tags
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { persist-credentials: false }
+      - run: python3 -m unittest discover -s tests -v
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Add version tags to verified published digests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release=$(python3 -c 'import json; print(json.load(open("images.json"))["release"])')
+          gh release download "$release" --repo "$GITHUB_REPOSITORY" --pattern publication.json
+          python3 tests/publish_version_tags.py publication.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: version-tags
+          path: version-tags.json
+
   policy:
+    if: github.event_name != 'workflow_dispatch' || !inputs.publish_version_tags
     runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.matrix.outputs.value }}
@@ -41,6 +75,7 @@ jobs:
           PY
 
   verify:
+    if: needs.policy.result == 'success'
     name: verify (${{ matrix.id }}, ${{ matrix.arch }})
     needs: policy
     runs-on: ${{ matrix.runner }}
