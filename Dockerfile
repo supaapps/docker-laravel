@@ -1,19 +1,19 @@
 # Default output is the maintained runtime; use --target build for tooling.
-ARG BASE_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:81211e15a86ea1d5357f284482af45730c51de45eaf10ad9ce205d6bfc2df323
+ARG BASE_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:c902a861151182e4ce2de29b8632ba3f7d75b68c35880580f16e353819e524d3
 ARG COMPOSER_IMAGE=composer:2.10.3@sha256:d0c32820c62cc860fddd22adceed4eeda7698b093a7a88d503414172ce400626
 FROM ${COMPOSER_IMAGE} AS composer
 FROM ${BASE_IMAGE} AS common
 ARG PHP_BRANCH=8.4
-ARG PHP_PACKAGE_VERSION=8.4.27-r0
-ARG IMAGICK_PACKAGE_VERSION=3.8.1-r5
-ARG REDIS_PACKAGE_VERSION=6.3.0-r6
+ARG PHP_PACKAGE_VERSION=8.4.28-r0
+ARG IMAGICK_PACKAGE_VERSION=3.8.1-r6
+ARG REDIS_PACKAGE_VERSION=6.3.0-r7
 ENV PHP_BRANCH=${PHP_BRANCH} PHP_INI_DIR=/etc/php TZ=UTC
 
 # All native libraries and PHP modules come from one signature-verified vendor.
 RUN set -eux; \
     set -- \
-      apache2=2.4.69-r1 \
-      libxml2-16=2.15.4-r1 imagemagick-7=7.1.2.34-r0 \
+      apache2=2.4.71-r0 \
+      libxml2-16=2.15.4-r5 imagemagick-7=7.1.2.36-r0 \
       "php-${PHP_BRANCH}=${PHP_PACKAGE_VERSION}" \
       "php-${PHP_BRANCH}-apache=${PHP_PACKAGE_VERSION}" \
       "php-${PHP_BRANCH}-imagick=${IMAGICK_PACKAGE_VERSION}" \
@@ -42,7 +42,7 @@ CMD ["apache2-foreground"]
 FROM common AS build
 ARG PHP_BRANCH
 ARG PHP_PACKAGE_VERSION
-ARG XDEBUG_PACKAGE_VERSION=3.5.3-r2
+ARG XDEBUG_PACKAGE_VERSION=3.5.3-r3
 RUN apk add --no-cache build-base autoconf automake libtool pkgconf git unzip zip \
       "php-${PHP_BRANCH}-dev=${PHP_PACKAGE_VERSION}" \
       "php-${PHP_BRANCH}-pear=${PHP_PACKAGE_VERSION}" \

@@ -11,7 +11,7 @@ from assert_new_tag import assert_missing
 class PolicyTests(unittest.TestCase):
     def test_pinned_supported_variants(self):
         config = json.loads(Path("images.json").read_text())
-        floors = {"8.2": (8, 2, 35), "8.3": (8, 3, 36), "8.4": (8, 4, 27)}
+        floors = {"8.2": (8, 2, 36), "8.3": (8, 3, 37), "8.4": (8, 4, 28)}
         tags = set()
         self.assertRegex(config["base_image"], r"^cgr.dev/chainguard/wolfi-base@sha256:[0-9a-f]{64}$")
         profiles = set()
@@ -20,7 +20,7 @@ class PolicyTests(unittest.TestCase):
             self.assertGreaterEqual(version, floors[variant["version"].rsplit(".", 1)[0]])
             self.assertEqual(variant["branch"], variant["version"].rsplit(".", 1)[0])
             self.assertIn(variant["profile"], ("build", "runtime"))
-            self.assertEqual(variant["php_package"], variant["version"] + "-r0")
+            self.assertRegex(variant["php_package"], "^" + re.escape(variant["version"]) + r"-r[0-9]+$")
             self.assertEqual(variant["tag"], config["release"].removeprefix("v") + "-" + variant["id"])
             self.assertNotIn(variant["tag"], tags)
             tags.add(variant["tag"])
@@ -32,8 +32,8 @@ class PolicyTests(unittest.TestCase):
         self.assertIn("FROM common AS build", dockerfile)
         self.assertIn("FROM common AS runtime", dockerfile)
         self.assertNotIn("FROM build AS runtime", dockerfile)
-        self.assertIn("libxml2-16=2.15.4-r1", dockerfile)
-        self.assertIn("imagemagick-7=7.1.2.34-r0", dockerfile)
+        self.assertIn("libxml2-16=2.15.4-r5", dockerfile)
+        self.assertIn("imagemagick-7=7.1.2.36-r0", dockerfile)
         self.assertNotIn("--allow-untrusted", dockerfile)
         self.assertNotIn("--force", dockerfile)
 

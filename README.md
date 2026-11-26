@@ -3,21 +3,21 @@
 ## Build And Runtime Images
 
 The proposed v5 catalog in `images.json` provides separate `build` and `runtime`
-images for PHP 8.2.35, 8.3.36 and 8.4.27 on native amd64/arm64. These releases
+images for PHP 8.2.36, 8.3.37 and 8.4.28 on native amd64/arm64. These releases
 address [the PHP emergency vulnerabilities](https://www.php.net/archive/2026.php).
 Publication requires all runtime, build, and security gates; catalog entries are
 not evidence that a release has already been published.
 
 The default `Dockerfile` uses digest-pinned Wolfi with signature-verified vendor
-packages: libxml2 2.15.4 and ImageMagick 7.1.2.34. PHP and extension package versions
+packages: libxml2 2.15.4-r5 and ImageMagick 7.1.2.36. PHP and extension package versions
 are pinned per branch. No private security patches or mixed-distribution binaries
 are used. Transitive packages are resolved by the vendor's signed repository;
 final SBOMs and image digests record the resolved dependency set.
 
 | Profile | Contents | Intended use |
 | --- | --- | --- |
-| `5.0.1-php8.4-build` (also 8.2/8.3) | Runtime plus Composer, compiler, PHP headers, phpize, PECL, Git and Xdebug | Build dependencies and custom extensions |
-| `5.0.1-php8.4-runtime` (also 8.2/8.3) | PHP CLI, Apache/mod_php, required PHP extensions and image libraries | Web, queue and scheduled Artisan processes |
+| `5.0.2-php8.4-build` (also 8.2/8.3) | Runtime plus Composer, compiler, PHP headers, phpize, PECL, Git and Xdebug | Build dependencies and custom extensions |
+| `5.0.2-php8.4-runtime` (also 8.2/8.3) | PHP CLI, Apache/mod_php, required PHP extensions and image libraries | Web, queue and scheduled Artisan processes |
 
 Build and runtime share the same vendor PHP and native libraries. The runtime
 starts from the common stage, not the build stage: no compiler, development
@@ -79,9 +79,9 @@ Local verification of the default PHP 8.4 variant (Docker required):
 ```sh
 python3 -m unittest discover -s tests -v
 docker build --pull --target runtime -t local/runtime:test .
-bash tests/maintained-smoke.sh local/runtime:test 8.4.27 runtime
+bash tests/maintained-smoke.sh local/runtime:test 8.4.28 runtime
 docker build --pull --target build -t local/build:test .
-bash tests/maintained-smoke.sh local/build:test 8.4.27 build
+bash tests/maintained-smoke.sh local/build:test 8.4.28 build
 ```
 
 CI verifies loaded XML libraries, DOM/SimpleXML, PDO, required PHP extensions,

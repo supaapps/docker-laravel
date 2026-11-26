@@ -115,7 +115,7 @@ jobs:
         if: matrix.id == 'php8.4-build' && matrix.arch == 'amd64'
         run: |
           docker build --pull --target build -t local/default-build:test .
-          bash tests/maintained-smoke.sh local/default-build:test 8.4.27 build
+          bash tests/maintained-smoke.sh local/default-build:test 8.4.28 build
       - name: Fresh Laravel integration
         env:
           BRANCH: ${{ matrix.branch }}
